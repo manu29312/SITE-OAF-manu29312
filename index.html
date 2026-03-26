@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OAF Admin - Prototype Front</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-1" aria-hidden="true"></div>
+    <div class="bg-shape bg-shape-2" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <h1>OAF Admin</h1>
+      </div>
+      <button class="cta">Nouveau document</button>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <button class="nav-item active" data-view="dashboard">Dashboard</button>
+        <button class="nav-item" data-view="clients">Clients</button>
+        <button class="nav-item" data-view="invoices">Factures</button>
+        <button class="nav-item" data-view="contracts">Contrats</button>
+        <button class="nav-item" data-view="settings">Parametres</button>
+      </aside>
+
+      <section class="content">
+        <section class="view active" id="dashboard">
+          <div class="dashboard-top">
+            <div class="hero">
+              <h2>Ton cockpit administratif freelance</h2>
+              <p>
+                Suis tes factures, contrats et relances dans une seule interface
+                claire.
+              </p>
+            </div>
+
+            <article class="panel company-profile" id="company-profile-menu">
+              <div class="company-profile-head">
+                <div>
+                  <span class="company-label">Profil entreprise</span>
+                  <h3>OAF Studio</h3>
+                </div>
+                <button
+                  class="profile-menu-trigger"
+                  id="profile-menu-trigger"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="profile-menu-list"
+                >
+                  Parametres
+                </button>
+              </div>
+              <p class="company-meta">SIREN 123 456 789 - Lyon</p>
+              <ul
+                class="profile-menu-list"
+                id="profile-menu-list"
+                role="menu"
+                hidden
+              >
+                <li role="menuitem"><button type="button">Voir profil</button></li>
+                <li role="menuitem"><button type="button">Editer infos</button></li>
+                <li role="menuitem"><button type="button">Reglages facturation</button></li>
+                <li role="menuitem"><button type="button">Deconnexion</button></li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="kpi-grid">
+            <article class="kpi-card kpi-card-ca">
+              <span>CA du mois</span>
+              <strong>4 980 EUR</strong>
+              <button class="kpi-link" id="toggle-ca-details" type="button">
+                Voir le detail
+              </button>
+            </article>
+            <article class="kpi-card">
+              <span>Factures en attente</span>
+              <strong>7</strong>
+            </article>
+            <article class="kpi-card">
+              <span>Contrats signes</span>
+              <strong>12</strong>
+            </article>
+            <article class="kpi-card">
+              <span>Relances programmees</span>
+              <strong>5</strong>
+            </article>
+          </div>
+
+          <article class="panel ca-details" id="ca-details" hidden>
+            <div class="section-head">
+              <h3>Detail du CA encaisse</h3>
+              <span class="badge ok">Total: 4 980 EUR</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Facture</th>
+                  <th>Montant encaisse</th>
+                  <th>Date de paiement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Studio Delta</td>
+                  <td>FAC-2026-028</td>
+                  <td>1 850 EUR</td>
+                  <td>12/03/2026</td>
+                </tr>
+                <tr>
+                  <td>Nova Events</td>
+                  <td>FAC-2026-026</td>
+                  <td>1 320 EUR</td>
+                  <td>10/03/2026</td>
+                </tr>
+                <tr>
+                  <td>Pixel Forge</td>
+                  <td>FAC-2026-021</td>
+                  <td>1 810 EUR</td>
+                  <td>05/03/2026</td>
+                </tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="panel">
+            <h3>Activite recente</h3>
+            <ul class="activity-list">
+              <li>Facture FAC-2026-031 envoyee a Studio Delta</li>
+              <li>Contrat NDA accepte par Pixel Forge</li>
+              <li>Relance J+3 planifiee pour FAC-2026-025</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="view" id="clients">
+          <div class="section-head">
+            <h2>Clients</h2>
+            <div class="clients-controls">
+              <select id="clients-filter" aria-label="Filtrer les factures clients">
+                <option value="all">Toutes les factures</option>
+                <option value="paid">Payees</option>
+                <option value="pending">En attente</option>
+                <option value="late">En retard</option>
+                <option value="draft">Brouillons</option>
+              </select>
+              <button class="secondary">Ajouter un client</button>
+            </div>
+          </div>
+
+          <div id="clients-board" class="clients-board"></div>
+        </section>
+
+        <section class="view" id="invoices">
+          <div class="section-head">
+            <h2>Factures</h2>
+            <button class="secondary">Nouvelle facture</button>
+          </div>
+
+          <article class="panel form-panel">
+            <h3>Brouillon rapide</h3>
+            <form>
+              <div class="form-row">
+                <label for="client">Client</label>
+                <input id="client" type="text" placeholder="Nom du client" />
+              </div>
+              <div class="form-row">
+                <label for="amount">Montant HT</label>
+                <input id="amount" type="number" placeholder="0" min="0" step="0.01" />
+              </div>
+              <div class="form-row">
+                <label for="vat">TVA (%)</label>
+                <input id="vat" type="number" placeholder="20" min="0" step="0.01" />
+              </div>
+              <div class="form-row">
+                <label for="invoice-status">Statut facture</label>
+                <select id="invoice-status">
+                  <option value="pending">En attente</option>
+                  <option value="paid">Payee</option>
+                  <option value="late">En retard</option>
+                  <option value="draft">Brouillon</option>
+                </select>
+              </div>
+              <div class="invoice-totals" aria-live="polite">
+                <div>
+                  <span>Montant HT</span>
+                  <strong id="invoice-total-ht">0.00 EUR</strong>
+                </div>
+                <div>
+                  <span>TVA</span>
+                  <strong id="invoice-total-vat">0.00 EUR</strong>
+                </div>
+                <div>
+                  <span>Montant TTC</span>
+                  <strong id="invoice-total-ttc">0.00 EUR</strong>
+                </div>
+              </div>
+              <button id="add-invoice" type="button" class="cta">Ajouter la facture</button>
+            </form>
+          </article>
+        </section>
+
+        <section class="view" id="contracts">
+          <div class="section-head">
+            <h2>Contrats</h2>
+            <button class="secondary">Nouveau contrat</button>
+          </div>
+
+          <article class="panel">
+            <h3>Templates disponibles</h3>
+            <div class="template-grid">
+              <div class="template-card">Prestation de service</div>
+              <div class="template-card">NDA</div>
+              <div class="template-card">Cession de droits</div>
+            </div>
+          </article>
+        </section>
+
+        <section class="view" id="settings">
+          <div class="section-head">
+            <h2>Parametres</h2>
+          </div>
+
+          <article class="panel form-panel">
+            <h3>Informations entreprise</h3>
+            <form>
+              <div class="form-row">
+                <label for="company">Nom entreprise</label>
+                <input id="company" type="text" placeholder="Ton entreprise" />
+              </div>
+              <div class="form-row">
+                <label for="siren">SIREN</label>
+                <input id="siren" type="text" placeholder="123 456 789" />
+              </div>
+              <div class="form-row">
+                <label for="iban">IBAN</label>
+                <input id="iban" type="text" placeholder="FR76 XXXX XXXX ..." />
+              </div>
+              <button type="button" class="cta">Sauvegarder</button>
+            </form>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
