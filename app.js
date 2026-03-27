@@ -106,11 +106,22 @@ if (amountInput && vatRateInput) {
 const invoiceStatusInput = document.querySelector('#invoice-status');
 const addInvoiceButton = document.querySelector('#add-invoice');
 const clientBoard = document.querySelector('#clients-board');
+const clientBoardLoading = document.querySelector('#clients-board-loading');
+const clientBoardEmpty = document.querySelector('#clients-board-empty');
 const invoiceStatusBoard = document.querySelector('#invoices-status-board');
 const invoicesFilterInput = document.querySelector('#invoices-filter');
 const invoiceSearchInput = document.querySelector('#invoice-search-input');
 const invoiceSearchButton = document.querySelector('#invoice-search-button');
 const invoiceSearchResetButton = document.querySelector('#invoice-search-reset');
+const quickDraftToggleButton = document.querySelector('#toggle-quick-draft');
+const quickDraftPanel = document.querySelector('#quick-draft-panel');
+const invoicesTableLoading = document.querySelector('#invoices-table-loading');
+const invoicesTableEmpty = document.querySelector('#invoices-table-empty');
+const invoicesTableWrap = document.querySelector('#invoices-table-wrap');
+const invoicesTableBody = document.querySelector('#invoices-table-body');
+const invoicesTableSummary = document.querySelector('#invoices-table-summary');
+const invoicesSortHeaders = document.querySelectorAll('.sort-header');
+const toastContainer = document.querySelector('#toast-container');
 const revenueViewModeInput = document.querySelector('#revenue-view-mode');
 const revenueYearInput = document.querySelector('#revenue-year');
 const revenueSummary = document.querySelector('#revenue-summary');
@@ -176,6 +187,9 @@ let invoiceCounter = 35;
 let openClientHistory = null;
 let selectedInvoiceFilter = 'all';
 let selectedInvoiceSearchQuery = '';
+let isInvoiceTableLoading = true;
+let isClientsBoardLoading = true;
+let invoiceSort = { key: 'issuedAt', direction: 'desc' };
 
 function escapeHtml(text) {
   return text
@@ -197,6 +211,21 @@ function formatDate(dateValue) {
 
 function formatShortAmount(value) {
   return `${Math.round(value).toLocaleString('fr-FR')} EUR`;
+}
+
+function showToast(message, type = 'success') {
+  if (!toastContainer) {
+    return;
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  toastContainer.appendChild(toast);
+
+  window.setTimeout(() => {
+    toast.remove();
+  }, 2600);
 }
 
 function getRevenueYears() {
@@ -473,6 +502,90 @@ function filterInvoiceEntries(entries) {
   });
 }
 
+function compareInvoiceEntries(a, b) {
+  if (invoiceSort.key === 'amountTtc') {
+    return invoiceSort.direction === 'asc' ? a.amountTtc - b.amountTtc : b.amountTtc - a.amountTtc;
+  }
+
+  if (invoiceSort.key === 'issuedAt') {
+    const aTime = new Date(a.issuedAt).getTime();
+    const bTime = new Date(b.issuedAt).getTime();
+    return invoiceSort.direction === 'asc' ? aTime - bTime : bTime - aTime;
+  }
+
+  const aValue = String(a[invoiceSort.key] || '').toLowerCase();
+  const bValue = String(b[invoiceSort.key] || '').toLowerCase();
+  if (aValue === bValue) {
+    return 0;
+  }
+
+  const baseCompare = aValue > bValue ? 1 : -1;
+  return invoiceSort.direction === 'asc' ? baseCompare : -baseCompare;
+}
+
+function updateInvoiceSortHeadersState() {
+  invoicesSortHeaders.forEach((header) => {
+    const key = header.dataset.sortKey;
+    if (key === invoiceSort.key) {
+      header.setAttribute('aria-sort', invoiceSort.direction === 'asc' ? 'ascending' : 'descending');
+      return;
+    }
+
+    header.setAttribute('aria-sort', 'none');
+  });
+}
+
+function renderInvoicesTable() {
+  if (!invoicesTableBody || !invoicesTableLoading || !invoicesTableEmpty || !invoicesTableWrap) {
+    return;
+  }
+
+  if (isInvoiceTableLoading) {
+    invoicesTableLoading.removeAttribute('hidden');
+    invoicesTableWrap.setAttribute('hidden', '');
+    invoicesTableEmpty.setAttribute('hidden', '');
+    if (invoicesTableSummary) {
+      invoicesTableSummary.textContent = 'Chargement...';
+    }
+    return;
+  }
+
+  const allEntries = collectInvoiceEntries();
+  const filteredEntries = filterInvoiceEntries(allEntries).sort(compareInvoiceEntries);
+
+  if (invoicesTableSummary) {
+    invoicesTableSummary.textContent = `${filteredEntries.length} facture(s) affichee(s)`;
+  }
+
+  if (filteredEntries.length === 0) {
+    invoicesTableLoading.setAttribute('hidden', '');
+    invoicesTableWrap.setAttribute('hidden', '');
+    invoicesTableEmpty.removeAttribute('hidden');
+    invoicesTableBody.innerHTML = '';
+    updateInvoiceSortHeadersState();
+    return;
+  }
+
+  invoicesTableBody.innerHTML = filteredEntries
+    .map(
+      (entry) => `
+        <tr>
+          <td>${escapeHtml(entry.number)}</td>
+          <td>${escapeHtml(entry.clientName)}</td>
+          <td>${formatAmount(entry.amountTtc)}</td>
+          <td>${formatDate(entry.issuedAt)}</td>
+          <td><span class="badge ${invoiceStatusConfig[entry.status].badgeClass}">${invoiceStatusConfig[entry.status].label}</span></td>
+        </tr>
+      `,
+    )
+    .join('');
+
+  invoicesTableLoading.setAttribute('hidden', '');
+  invoicesTableEmpty.setAttribute('hidden', '');
+  invoicesTableWrap.removeAttribute('hidden');
+  updateInvoiceSortHeadersState();
+}
+
 function formatStatusInvoiceList(entries) {
   if (entries.length === 0) {
     return '<ul class="client-status-list empty"><li>Aucune facture</li></ul>';
@@ -549,7 +662,14 @@ function renderInvoiceStatusBoard() {
 }
 
 function renderClientsBoard() {
-  if (!clientBoard) {
+  if (!clientBoard || !clientBoardLoading || !clientBoardEmpty) {
+    return;
+  }
+
+  if (isClientsBoardLoading) {
+    clientBoardLoading.removeAttribute('hidden');
+    clientBoardEmpty.setAttribute('hidden', '');
+    clientBoard.setAttribute('hidden', '');
     return;
   }
 
@@ -575,7 +695,18 @@ function renderClientsBoard() {
     })
     .join('');
 
-  clientBoard.innerHTML = cards || '<article class="client-card"><p>Aucun client pour ce filtre.</p></article>';
+  if (!cards) {
+    clientBoardLoading.setAttribute('hidden', '');
+    clientBoard.setAttribute('hidden', '');
+    clientBoardEmpty.removeAttribute('hidden');
+    clientBoard.innerHTML = '';
+    return;
+  }
+
+  clientBoardLoading.setAttribute('hidden', '');
+  clientBoardEmpty.setAttribute('hidden', '');
+  clientBoard.removeAttribute('hidden');
+  clientBoard.innerHTML = cards;
 }
 
 function addInvoiceToClient() {
@@ -609,9 +740,11 @@ function addInvoiceToClient() {
 
   renderClientsBoard();
   renderInvoiceStatusBoard();
+  renderInvoicesTable();
   updateDashboardKpis();
   showView('invoices');
   amountInput.value = '';
+  showToast('Facture ajoutee avec succes.', 'success');
 }
 
 function runContractSearch() {
@@ -659,6 +792,7 @@ function runInvoiceSearch() {
   const query = (invoiceSearchInput?.value || '').trim().toLowerCase();
   selectedInvoiceSearchQuery = query;
   renderInvoiceStatusBoard();
+  renderInvoicesTable();
 }
 
 function resetInvoiceSearch() {
@@ -668,6 +802,8 @@ function resetInvoiceSearch() {
   }
 
   renderInvoiceStatusBoard();
+  renderInvoicesTable();
+  showToast('Recherche facture reinitialisee.', 'info');
 }
 
 if (addInvoiceButton) {
@@ -700,8 +836,29 @@ if (invoicesFilterInput) {
   invoicesFilterInput.addEventListener('change', () => {
     selectedInvoiceFilter = invoicesFilterInput.value;
     renderInvoiceStatusBoard();
+    renderInvoicesTable();
   });
 }
+
+invoicesSortHeaders.forEach((header) => {
+  header.addEventListener('click', () => {
+    const key = header.dataset.sortKey;
+    if (!key) {
+      return;
+    }
+
+    if (invoiceSort.key === key) {
+      invoiceSort.direction = invoiceSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+      invoiceSort = {
+        key,
+        direction: key === 'issuedAt' || key === 'amountTtc' ? 'desc' : 'asc',
+      };
+    }
+
+    renderInvoicesTable();
+  });
+});
 
 if (contractSearchButton) {
   contractSearchButton.addEventListener('click', runContractSearch);
@@ -735,14 +892,33 @@ if (invoiceSearchInput) {
       runInvoiceSearch();
     }
   });
+}
 
-  [reminderJm3, reminderJp3, reminderJp10].forEach((input) => {
-    input?.addEventListener('change', updateCronStatus);
+if (quickDraftToggleButton && quickDraftPanel) {
+  quickDraftToggleButton.addEventListener('click', () => {
+    const isHidden = quickDraftPanel.hasAttribute('hidden');
+    if (isHidden) {
+      quickDraftPanel.removeAttribute('hidden');
+      quickDraftToggleButton.setAttribute('aria-expanded', 'true');
+      quickDraftToggleButton.textContent = 'Masquer brouillon rapide';
+      return;
+    }
+
+    quickDraftPanel.setAttribute('hidden', '');
+    quickDraftToggleButton.setAttribute('aria-expanded', 'false');
+    quickDraftToggleButton.textContent = 'Ouvrir brouillon rapide';
   });
+}
 
-  if (manualReminderButton) {
-    manualReminderButton.addEventListener('click', runManualReminders);
-  }
+[reminderJm3, reminderJp3, reminderJp10].forEach((input) => {
+  input?.addEventListener('change', updateCronStatus);
+});
+
+if (manualReminderButton) {
+  manualReminderButton.addEventListener('click', () => {
+    runManualReminders();
+    showToast('Relance manuelle executee.', 'info');
+  });
 }
 
 if (revenueViewModeInput) {
@@ -759,5 +935,16 @@ window.addEventListener('resize', renderRevenueEvolution);
 
 renderClientsBoard();
 renderInvoiceStatusBoard();
+renderInvoicesTable();
 populateRevenueYears();
 renderRevenueEvolution();
+
+window.setTimeout(() => {
+  isClientsBoardLoading = false;
+  renderClientsBoard();
+}, 320);
+
+window.setTimeout(() => {
+  isInvoiceTableLoading = false;
+  renderInvoicesTable();
+}, 420);

@@ -218,7 +218,7 @@ h3 {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.8rem;
   margin-bottom: 1rem;
 }
@@ -321,33 +321,41 @@ h3 {
   font-size: 0.9rem;
 }
 
+.loading-state,
+.empty-state {
+  border: 1px dashed #d9c9b3;
+  border-radius: 10px;
+  padding: 0.75rem 0.8rem;
+  color: var(--text-soft);
+  background: #fff9ef;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.sort-header {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sort-header[aria-sort="ascending"]::after {
+  content: " ▲";
+  font-size: 0.72rem;
+}
+
+.sort-header[aria-sort="descending"]::after {
+  content: " ▼";
+  font-size: 0.72rem;
+}
+
 .revenue-panel {
   margin-bottom: 1rem;
-}
-
-.reminders-panel {
-  margin-bottom: 1rem;
-}
-
-.reminder-options {
-  display: grid;
-  gap: 0.45rem;
-  margin-bottom: 0.75rem;
-}
-
-.reminder-check {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: var(--text-main);
-  font-size: 0.92rem;
-}
-
-.reminder-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex-wrap: wrap;
 }
 
 .revenue-controls {
@@ -633,6 +641,44 @@ button {
 .secondary {
   color: #fff;
   background: linear-gradient(140deg, var(--accent-alt), #24869a);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+.sort-header:focus-visible {
+  outline: 3px solid #7dbcc8;
+  outline-offset: 2px;
+}
+
+.toast-container {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.55rem;
+  z-index: 50;
+}
+
+.toast {
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  color: #fff;
+  min-width: 220px;
+  box-shadow: 0 14px 30px rgba(31, 38, 44, 0.2);
+  animation: fadeUp 0.2s ease;
+}
+
+.toast.success {
+  background: #2d8f66;
+}
+
+.toast.info {
+  background: #17616f;
+}
+
+.toast.error {
+  background: #b33c32;
 }
 
 @keyframes fadeUp {

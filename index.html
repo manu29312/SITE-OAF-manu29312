@@ -37,7 +37,7 @@
         <section class="view active" id="dashboard">
           <div class="dashboard-top">
             <div class="hero">
-              <h2>Ton cockpit administratif freelance</h2>
+              <h2>Cockpit administratif freelance</h2>
               <p>
                 Suis tes factures, contrats et relances dans une seule interface
                 claire.
@@ -188,7 +188,9 @@
             <button class="secondary">Ajouter un client</button>
           </div>
 
-          <div id="clients-board" class="clients-board"></div>
+          <div id="clients-board-loading" class="loading-state">Chargement des clients...</div>
+          <div id="clients-board-empty" class="empty-state" hidden>Aucun client enregistre.</div>
+          <div id="clients-board" class="clients-board" aria-live="polite" hidden></div>
         </section>
 
         <section class="view" id="invoices">
@@ -203,6 +205,15 @@
               />
               <button id="invoice-search-button" class="secondary" type="button">Rechercher</button>
               <button id="invoice-search-reset" class="ghost-action" type="button">Reinitialiser</button>
+              <button
+                id="toggle-quick-draft"
+                class="ghost-action"
+                type="button"
+                aria-expanded="false"
+                aria-controls="quick-draft-panel"
+              >
+                Ouvrir brouillon rapide
+              </button>
               <select id="invoices-filter" aria-label="Filtrer les factures par statut">
                 <option value="all">Tous les statuts</option>
                 <option value="paid">Payees</option>
@@ -219,7 +230,46 @@
             <div id="invoices-status-board" class="invoice-status-board"></div>
           </article>
 
-          <article class="panel form-panel">
+          <article class="panel">
+            <div class="section-head">
+              <h3>Liste des factures</h3>
+              <span id="invoices-table-summary" class="search-feedback">Chargement...</span>
+            </div>
+            <div id="invoices-table-loading" class="loading-state">Chargement des factures...</div>
+            <div id="invoices-table-empty" class="empty-state" hidden>Aucune facture pour ces filtres.</div>
+            <div class="table-wrap" id="invoices-table-wrap" hidden>
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      <button class="sort-header" data-sort-key="number" aria-sort="none" type="button">
+                        Numero facture
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-header" data-sort-key="clientName" aria-sort="none" type="button">
+                        Entreprise
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-header" data-sort-key="amountTtc" aria-sort="none" type="button">
+                        Montant TTC
+                      </button>
+                    </th>
+                    <th>
+                      <button class="sort-header" data-sort-key="issuedAt" aria-sort="descending" type="button">
+                        Date
+                      </button>
+                    </th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody id="invoices-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel form-panel" id="quick-draft-panel" hidden>
             <h3>Brouillon rapide</h3>
             <form>
               <div class="form-row">
@@ -315,6 +365,8 @@
         </section>
       </section>
     </main>
+
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="app.js"></script>
   </body>
