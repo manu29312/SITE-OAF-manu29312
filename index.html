@@ -142,21 +142,28 @@
               <li>Relance J+3 planifiee pour FAC-2026-025</li>
             </ul>
           </article>
+
+          <article class="panel revenue-panel">
+            <div class="section-head">
+              <h3>Evolution du chiffre d affaires</h3>
+              <div class="clients-controls revenue-controls">
+                <select id="revenue-view-mode" aria-label="Mode affichage chiffre d affaires">
+                  <option value="yearly">Annuel</option>
+                  <option value="monthly">Mensuel</option>
+                </select>
+                <select id="revenue-year" aria-label="Annee du chiffre d affaires"></select>
+              </div>
+            </div>
+            <p id="revenue-summary" class="search-feedback"></p>
+            <canvas id="revenue-chart" class="revenue-chart" height="260"></canvas>
+            <div id="revenue-x-labels" class="revenue-x-labels"></div>
+          </article>
         </section>
 
         <section class="view" id="clients">
           <div class="section-head">
             <h2>Clients</h2>
-            <div class="clients-controls">
-              <select id="clients-filter" aria-label="Filtrer les factures clients">
-                <option value="all">Toutes les factures</option>
-                <option value="paid">Payees</option>
-                <option value="pending">En attente</option>
-                <option value="late">En retard</option>
-                <option value="draft">Brouillons</option>
-              </select>
-              <button class="secondary">Ajouter un client</button>
-            </div>
+            <button class="secondary">Ajouter un client</button>
           </div>
 
           <div id="clients-board" class="clients-board"></div>
@@ -165,8 +172,30 @@
         <section class="view" id="invoices">
           <div class="section-head">
             <h2>Factures</h2>
-            <button class="secondary">Nouvelle facture</button>
+            <div class="clients-controls">
+              <input
+                id="invoice-search-input"
+                type="text"
+                placeholder="Entreprise ou numero facture"
+                aria-label="Rechercher une facture"
+              />
+              <button id="invoice-search-button" class="secondary" type="button">Rechercher</button>
+              <button id="invoice-search-reset" class="ghost-action" type="button">Reinitialiser</button>
+              <select id="invoices-filter" aria-label="Filtrer les factures par statut">
+                <option value="all">Tous les statuts</option>
+                <option value="paid">Payees</option>
+                <option value="pending">En attente</option>
+                <option value="late">En retard</option>
+                <option value="draft">Brouillons</option>
+              </select>
+              <button class="secondary">Nouvelle facture</button>
+            </div>
           </div>
+
+          <article class="panel">
+            <h3>Suivi des statuts facture</h3>
+            <div id="invoices-status-board" class="invoice-status-board"></div>
+          </article>
 
           <article class="panel form-panel">
             <h3>Brouillon rapide</h3>
@@ -214,15 +243,26 @@
         <section class="view" id="contracts">
           <div class="section-head">
             <h2>Contrats</h2>
-            <button class="secondary">Nouveau contrat</button>
+            <div class="clients-controls">
+              <input
+                id="contract-search-input"
+                type="text"
+                placeholder="Rechercher un contrat"
+                aria-label="Rechercher un contrat"
+              />
+              <button id="contract-search-button" class="secondary" type="button">Rechercher</button>
+              <button id="contract-search-reset" class="ghost-action" type="button">Reinitialiser</button>
+              <button class="secondary">Nouveau contrat</button>
+            </div>
           </div>
 
           <article class="panel">
             <h3>Templates disponibles</h3>
-            <div class="template-grid">
-              <div class="template-card">Prestation de service</div>
-              <div class="template-card">NDA</div>
-              <div class="template-card">Cession de droits</div>
+            <p id="contract-search-feedback" class="search-feedback" hidden></p>
+            <div id="contracts-template-grid" class="template-grid">
+              <div class="template-card" data-contract-name="Prestation de service">Prestation de service</div>
+              <div class="template-card" data-contract-name="NDA">NDA</div>
+              <div class="template-card" data-contract-name="Cession de droits">Cession de droits</div>
             </div>
           </article>
         </section>

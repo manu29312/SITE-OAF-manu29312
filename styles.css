@@ -280,10 +280,70 @@ h3 {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .clients-controls select {
   min-width: 175px;
+}
+
+.clients-controls input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  min-width: 220px;
+  background: #fff;
+}
+
+.clients-controls input:focus {
+  outline: 2px solid #a8d5df;
+  border-color: #8ec3cf;
+}
+
+.ghost-action {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: #fff;
+  cursor: pointer;
+}
+
+.ghost-action:hover {
+  background: #f8f3ea;
+}
+
+.search-feedback {
+  margin: 0.55rem 0 0.7rem;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+}
+
+.revenue-panel {
+  margin-bottom: 1rem;
+}
+
+.revenue-controls {
+  justify-content: flex-end;
+}
+
+.revenue-chart {
+  width: 100%;
+  height: 260px;
+  border: 1px solid #ecdfcd;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffefc 0%, #fff7ea 100%);
+}
+
+.revenue-x-labels {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 .activity-list {
@@ -295,6 +355,16 @@ h3 {
 .clients-board {
   display: grid;
   gap: 0.8rem;
+}
+
+.invoice-status-board {
+  margin-top: 0.75rem;
+}
+
+.invoice-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
 }
 
 .client-card {
@@ -580,6 +650,10 @@ button {
   }
 
   .client-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-status-grid {
     grid-template-columns: 1fr;
   }
 
