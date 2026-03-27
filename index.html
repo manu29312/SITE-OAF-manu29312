@@ -84,16 +84,20 @@
               </button>
             </article>
             <article class="kpi-card">
+              <span>Total factures</span>
+              <strong id="kpi-total-invoices">0</strong>
+            </article>
+            <article class="kpi-card">
               <span>Factures en attente</span>
-              <strong>7</strong>
+              <strong id="kpi-pending-invoices">0</strong>
             </article>
             <article class="kpi-card">
-              <span>Contrats signes</span>
-              <strong>12</strong>
+              <span>Factures en retard</span>
+              <strong id="kpi-late-invoices">0</strong>
             </article>
             <article class="kpi-card">
-              <span>Relances programmees</span>
-              <strong>5</strong>
+              <span>Taux signature contrats</span>
+              <strong id="kpi-signature-rate">0%</strong>
             </article>
           </div>
 
@@ -141,6 +145,24 @@
               <li>Contrat NDA accepte par Pixel Forge</li>
               <li>Relance J+3 planifiee pour FAC-2026-025</li>
             </ul>
+          </article>
+
+          <article class="panel reminders-panel">
+            <div class="section-head">
+              <h3>Relances automatiques</h3>
+              <span id="cron-status" class="badge ok">Cron quotidien actif</span>
+            </div>
+            <p class="search-feedback">Planification rappels auto: J-3, J+3, J+10</p>
+            <div class="reminder-options">
+              <label class="reminder-check"><input id="reminder-jm3" type="checkbox" checked /> J-3 avant echeance</label>
+              <label class="reminder-check"><input id="reminder-jp3" type="checkbox" checked /> J+3 apres echeance</label>
+              <label class="reminder-check"><input id="reminder-jp10" type="checkbox" checked /> J+10 apres echeance</label>
+            </div>
+            <div class="reminder-actions">
+              <button id="manual-reminder-btn" class="secondary" type="button">Relance manuelle</button>
+              <span id="manual-reminder-result" class="search-feedback">Aucune relance manuelle lancee</span>
+            </div>
+            <p id="cron-last-run" class="search-feedback">Dernier job cron: aujourd hui a 08:00</p>
           </article>
 
           <article class="panel revenue-panel">

@@ -116,6 +116,17 @@ const revenueYearInput = document.querySelector('#revenue-year');
 const revenueSummary = document.querySelector('#revenue-summary');
 const revenueChartCanvas = document.querySelector('#revenue-chart');
 const revenueXLabels = document.querySelector('#revenue-x-labels');
+const kpiTotalInvoices = document.querySelector('#kpi-total-invoices');
+const kpiPendingInvoices = document.querySelector('#kpi-pending-invoices');
+const kpiLateInvoices = document.querySelector('#kpi-late-invoices');
+const kpiSignatureRate = document.querySelector('#kpi-signature-rate');
+const reminderJm3 = document.querySelector('#reminder-jm3');
+const reminderJp3 = document.querySelector('#reminder-jp3');
+const reminderJp10 = document.querySelector('#reminder-jp10');
+const manualReminderButton = document.querySelector('#manual-reminder-btn');
+const manualReminderResult = document.querySelector('#manual-reminder-result');
+const cronStatus = document.querySelector('#cron-status');
+const cronLastRun = document.querySelector('#cron-last-run');
 const contractSearchInput = document.querySelector('#contract-search-input');
 const contractSearchButton = document.querySelector('#contract-search-button');
 const contractSearchResetButton = document.querySelector('#contract-search-reset');
@@ -149,6 +160,15 @@ const revenueDataByYear = {
   2025: [4300, 5000, 5600, 6300, 7100, 7700, 7400, 8100, 8800, 9400, 9800, 10400],
   2026: [4800, 5400, 6200, 6900, 7600, 8300, 7900, 8600, 9300, 9800, 10400, 11200],
 };
+
+const contractsData = [
+  { id: 'CTR-2026-01', status: 'signed' },
+  { id: 'CTR-2026-02', status: 'signed' },
+  { id: 'CTR-2026-03', status: 'sent' },
+  { id: 'CTR-2026-04', status: 'signed' },
+  { id: 'CTR-2026-05', status: 'draft' },
+  { id: 'CTR-2026-06', status: 'signed' },
+];
 
 const revenueMonthLabels = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aou', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -360,6 +380,77 @@ function collectInvoiceEntries() {
   );
 }
 
+function updateDashboardKpis() {
+  const allInvoices = collectInvoiceEntries();
+  const totalInvoices = allInvoices.length;
+  const pendingInvoices = allInvoices.filter((entry) => entry.status === 'pending').length;
+  const lateInvoices = allInvoices.filter((entry) => entry.status === 'late').length;
+  const signedContracts = contractsData.filter((contract) => contract.status === 'signed').length;
+  const signatureRate = contractsData.length === 0 ? 0 : Math.round((signedContracts / contractsData.length) * 100);
+
+  if (kpiTotalInvoices) {
+    kpiTotalInvoices.textContent = String(totalInvoices);
+  }
+
+  if (kpiPendingInvoices) {
+    kpiPendingInvoices.textContent = String(pendingInvoices);
+  }
+
+  if (kpiLateInvoices) {
+    kpiLateInvoices.textContent = String(lateInvoices);
+  }
+
+  if (kpiSignatureRate) {
+    kpiSignatureRate.textContent = `${signatureRate}%`;
+  }
+}
+
+function getActiveReminderOffsets() {
+  const offsets = [];
+  if (reminderJm3?.checked) offsets.push('J-3');
+  if (reminderJp3?.checked) offsets.push('J+3');
+  if (reminderJp10?.checked) offsets.push('J+10');
+  return offsets;
+}
+
+function updateCronStatus() {
+  const activeOffsets = getActiveReminderOffsets();
+  if (!cronStatus) {
+    return;
+  }
+
+  if (activeOffsets.length === 0) {
+    cronStatus.classList.remove('ok');
+    cronStatus.classList.add('wait');
+    cronStatus.textContent = 'Cron actif - aucun rappel configure';
+    return;
+  }
+
+  cronStatus.classList.remove('wait');
+  cronStatus.classList.add('ok');
+  cronStatus.textContent = `Cron quotidien actif (${activeOffsets.join(', ')})`;
+}
+
+function runManualReminders() {
+  const activeOffsets = getActiveReminderOffsets();
+  const dueInvoices = collectInvoiceEntries().filter(
+    (entry) => entry.status === 'pending' || entry.status === 'late',
+  );
+
+  if (manualReminderResult) {
+    if (activeOffsets.length === 0) {
+      manualReminderResult.textContent = 'Active au moins une planification de rappel (J-3, J+3 ou J+10).';
+    } else {
+      manualReminderResult.textContent = `${dueInvoices.length} relance(s) preparee(s) en mode manuel (${activeOffsets.join(', ')}).`;
+    }
+  }
+
+  if (cronLastRun) {
+    const now = new Date();
+    cronLastRun.textContent = `Dernier job cron: ${now.toLocaleDateString('fr-FR')} a ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+}
+
 function filterInvoiceEntries(entries) {
   return entries.filter((entry) => {
     const statusMatch =
@@ -518,6 +609,7 @@ function addInvoiceToClient() {
 
   renderClientsBoard();
   renderInvoiceStatusBoard();
+  updateDashboardKpis();
   showView('invoices');
   amountInput.value = '';
 }
@@ -643,9 +735,19 @@ if (invoiceSearchInput) {
       runInvoiceSearch();
     }
   });
+
+  [reminderJm3, reminderJp3, reminderJp10].forEach((input) => {
+    input?.addEventListener('change', updateCronStatus);
+  });
+
+  if (manualReminderButton) {
+    manualReminderButton.addEventListener('click', runManualReminders);
+  }
 }
 
 if (revenueViewModeInput) {
+  updateDashboardKpis();
+  updateCronStatus();
   revenueViewModeInput.addEventListener('change', renderRevenueEvolution);
 }
 
