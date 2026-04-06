@@ -38,10 +38,10 @@ Ce document sert de plan de transition pour passer du prototype statique actuel 
 - [x] Ajouter les routes API de base
 
 ### Point 4 - Nettoyage final
-- [ ] Supprimer les doublons entre ancien front et Next.js
-- [ ] Verifier les imports et alias `@/*`
-- [ ] Ajouter les variables d environnement finales
-- [ ] Preparer le premier push de la version Next.js
+- [x] Supprimer les doublons entre ancien front et Next.js
+- [x] Verifier les imports et alias `@/*`
+- [x] Ajouter les variables d environnement finales
+- [x] Preparer le premier push de la version Next.js
 
 ## Structure cible recommandee
 
@@ -74,10 +74,19 @@ src/
 
 ## Correspondance entre l ancien projet et Next.js
 
-- `index.html` -> `src/app/page.tsx` et `src/app/layout.tsx`
-- `styles.css` -> `src/app/globals.css`
-- `app.js` -> decoupage vers `src/features/*` et `src/lib/*`
+- `legacy-static/index.html` -> `src/app/page.tsx` et `src/app/layout.tsx`
+- `legacy-static/styles.css` -> `src/app/globals.css`
+- `legacy-static/app.js` -> decoupage vers `src/features/*` et `src/lib/*`
 - fichiers de suivi -> `src/lib/site-data.ts` ou dossier `/docs`
+
+## Variables d environnement retenues
+
+- `NEXT_PUBLIC_APP_NAME` : nom affiche dans le front.
+- `NEXT_PUBLIC_APP_URL` : URL publique de l application.
+- `NEXT_PUBLIC_API_BASE_URL` : URL de base des routes API.
+- `DATABASE_URL` : connexion base de donnees pour la future persistance.
+
+Le modele est versionne dans `.env.example`.
 
 ## Ordre de migration conseille
 
@@ -93,7 +102,7 @@ src/
 - Etape 1: terminee et validee localement.
 - Etape 2: terminee.
 - Etape 3: terminee.
-- Etape 4: non commencee.
+- Etape 4: terminee et prete pour pre-push Next.js.
 
 ## Regles pour garder un projet propre
 

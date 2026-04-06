@@ -27,9 +27,9 @@ export const migrationSteps = [
 ];
 
 export const legacyToNextMap = [
-  { legacy: 'index.html', next: 'src/app/page.tsx + src/app/layout.tsx' },
-  { legacy: 'styles.css', next: 'src/app/globals.css' },
-  { legacy: 'app.js', next: 'src/features/* + src/lib/*' },
+  { legacy: 'legacy-static/index.html', next: 'src/app/page.tsx + src/app/layout.tsx' },
+  { legacy: 'legacy-static/styles.css', next: 'src/app/globals.css' },
+  { legacy: 'legacy-static/app.js', next: 'src/features/* + src/lib/*' },
   { legacy: 'MVP_APP_WEB_TACHES.md', next: 'src/lib/site-data.ts ou docs' },
 ];
 
