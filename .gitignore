@@ -25,9 +25,11 @@ out/
 
 # Node / frontend caches
 node_modules/
+.next/
 .cache/
 .parcel-cache/
 .vite/
+*.tsbuildinfo
 
 # VS Code local-only files
 .vscode/*.code-workspace
