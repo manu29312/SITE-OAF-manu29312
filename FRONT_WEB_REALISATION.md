@@ -1,19 +1,3 @@
-# Front web cree - Explication
-
-## Objectif
-Demarrer rapidement la partie front avec une interface claire pour ton MVP:
-- Dashboard
-- Clients
-- Factures
-- Contrats
-- Parametres
-
-## Fichiers crees
-- `index.html`: structure principale de l application
-- `styles.css`: design, couleurs, layout responsive, animations
-- `app.js`: navigation entre les sections (sans recharger la page)
-
-## Ce qui a ete implemente
 
 ### 1) Structure de l interface
 Le fichier `index.html` contient:
@@ -43,6 +27,7 @@ Le fichier `app.js` gere:
 Option la plus simple:
 1. Ouvre le dossier du projet
 2. Ouvre `index.html` dans le navigateur
+
 
 Option serveur local (recommande):
 1. Installe Node.js si besoin

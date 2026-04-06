@@ -1,6 +1,9 @@
+import Link from 'next/link';
+
 type SidebarItem = {
   label: string;
   active?: boolean;
+  href?: string;
 };
 
 type SidebarProps = {
@@ -14,9 +17,15 @@ export function Sidebar({ items }: SidebarProps) {
         <ul className="sidebar-list">
           {items.map((item) => (
             <li key={item.label}>
-              <button className={`sidebar-link ${item.active ? 'active' : ''}`} type="button">
-                {item.label}
-              </button>
+              {item.href ? (
+                <Link className={`sidebar-link ${item.active ? 'active' : ''}`} href={item.href}>
+                  {item.label}
+                </Link>
+              ) : (
+                <button className={`sidebar-link ${item.active ? 'active' : ''}`} type="button">
+                  {item.label}
+                </button>
+              )}
             </li>
           ))}
         </ul>
