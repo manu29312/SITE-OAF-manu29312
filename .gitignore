@@ -1,0 +1,35 @@
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local backups and temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# Common build or export outputs
+dist/
+build/
+coverage/
+out/
+*.pdf
+
+# Node / frontend caches
+node_modules/
+.cache/
+.parcel-cache/
+.vite/
+
+# VS Code local-only files
+.vscode/*.code-workspace
+.vscode/settings.json
+.vscode/launch.json

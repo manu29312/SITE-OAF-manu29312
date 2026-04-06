@@ -102,7 +102,8 @@ h3 {
   font-weight: 600;
   color: var(--text-soft);
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, background, color;
 }
 
 .nav-item:hover,
@@ -110,7 +111,7 @@ h3 {
   border-color: var(--border);
   background: var(--bg-card);
   color: var(--text-main);
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 
 .content {
@@ -119,11 +120,13 @@ h3 {
 
 .view {
   display: none;
-  animation: fadeUp 0.35s ease;
+  opacity: 0;
+  animation: fadeUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .view.active {
   display: block;
+  animation: fadeUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hero {
@@ -328,6 +331,10 @@ h3 {
   padding: 0.75rem 0.8rem;
   color: var(--text-soft);
   background: #fff9ef;
+}
+
+.loading-state {
+  animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .table-wrap {
@@ -631,16 +638,38 @@ button {
   padding: 0.65rem 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow, opacity;
 }
 
 .cta {
   color: #fff;
   background: linear-gradient(135deg, var(--accent), #df7041);
+  box-shadow: 0 4px 12px rgba(196, 87, 42, 0.2);
+}
+
+.cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(196, 87, 42, 0.3);
+}
+
+.cta:active {
+  transform: translateY(0);
 }
 
 .secondary {
   color: #fff;
   background: linear-gradient(140deg, var(--accent-alt), #24869a);
+  box-shadow: 0 4px 12px rgba(23, 97, 111, 0.2);
+}
+
+.secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(23, 97, 111, 0.3);
+}
+
+.secondary:active {
+  transform: translateY(0);
 }
 
 button:focus-visible,
@@ -666,7 +695,8 @@ select:focus-visible,
   color: #fff;
   min-width: 220px;
   box-shadow: 0 14px 30px rgba(31, 38, 44, 0.2);
-  animation: fadeUp 0.2s ease;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity;
 }
 
 .toast.success {
@@ -684,11 +714,74 @@ select:focus-visible,
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-main: #1a1a1a;
+    --bg-card: #2d2d2d;
+    --text-main: #e0e0e0;
+    --text-soft: #a0a0a0;
+    --accent: #ff7d54;
+    --accent-alt: #4db8d1;
+    --border: #404040;
+    --ok: #4aaf7f;
+    --wait: #d4972e;
+  }
+
+  .hero {
+    background: linear-gradient(145deg, #3a3a3a, #2d2d2d);
+  }
+
+  .loading-state,
+  .empty-state {
+    background: #2a2a2a;
+    border-color: #404040;
+  }
+
+  .ghost-action {
+    background: #2d2d2d;
+    color: var(--text-main);
+  }
+
+  .ghost-action:hover {
+    background: #3a3a3a;
+  }
+
+  .profile-menu-list li button:hover {
+    background: #3a3a3a;
+  }
+
+  .revenue-chart {
+    background: linear-gradient(180deg, #2d2d2d 0%, #262626 100%);
+    border-color: #404040;
   }
 }
 
