@@ -20,6 +20,45 @@ type CreateInvoiceInput = {
   status?: Invoice['status'];
 };
 
+type MemoryStore = {
+  clients: Client[];
+  contracts: Contract[];
+  invoices: Invoice[];
+};
+
+const memoryStoreByUser = new Map<string, MemoryStore>();
+
+function getMemoryStore(userId: string): MemoryStore {
+  const existing = memoryStoreByUser.get(userId);
+  if (existing) {
+    return existing;
+  }
+
+  const initial: MemoryStore = {
+    clients: [],
+    contracts: [],
+    invoices: [],
+  };
+  memoryStoreByUser.set(userId, initial);
+  return initial;
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isDatabaseUnavailable(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.name === 'PrismaClientInitializationError' ||
+    error.message.includes("Can't reach database server") ||
+    error.message.includes('P1001')
+  );
+}
+
 function toClientStatus(value: PrismaClientStatus): Client['status'] {
   return value === 'ACTIF' ? 'actif' : 'inactif';
 }
@@ -118,192 +157,308 @@ async function generateNextInvoiceNumber(userId: string): Promise<string> {
 }
 
 export async function getClients(userId: string): Promise<Client[]> {
-  const records = await prisma.client.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const records = await prisma.client.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return records.map((item) => ({
-    id: item.id,
-    name: item.name,
-    email: item.email,
-    company: item.company,
-    status: toClientStatus(item.status),
-    city: item.city ?? 'Non renseignee',
-  }));
+    return records.map((item) => ({
+      id: item.id,
+      name: item.name,
+      email: item.email,
+      company: item.company,
+      status: toClientStatus(item.status),
+      city: item.city ?? 'Non renseignee',
+    }));
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    return [...getMemoryStore(userId).clients];
+  }
 }
 
 export async function createClient(userId: string, input: CreateClientInput): Promise<Client> {
-  const created = await prisma.client.create({
-    data: {
-      userId,
+  try {
+    const created = await prisma.client.create({
+      data: {
+        userId,
+        name: input.name,
+        email: input.email,
+        company: input.company,
+        city: input.city,
+        status: fromClientStatus(input.status),
+      },
+    });
+
+    return {
+      id: created.id,
+      name: created.name,
+      email: created.email,
+      company: created.company,
+      city: created.city ?? 'Non renseignee',
+      status: toClientStatus(created.status),
+    };
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    const created: Client = {
+      id: generateId('client'),
       name: input.name,
       email: input.email,
       company: input.company,
       city: input.city,
-      status: fromClientStatus(input.status),
-    },
-  });
+      status: input.status,
+    };
 
-  return {
-    id: created.id,
-    name: created.name,
-    email: created.email,
-    company: created.company,
-    city: created.city ?? 'Non renseignee',
-    status: toClientStatus(created.status),
-  };
+    const store = getMemoryStore(userId);
+    store.clients.unshift(created);
+
+    return created;
+  }
 }
 
 export async function getInvoices(userId: string): Promise<Invoice[]> {
-  const records = await prisma.invoice.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const records = await prisma.invoice.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return records.map((item) => ({
-    id: item.id,
-    clientId: item.clientId,
-    number: item.number,
-    amountHt: Number(item.amountHt),
-    amountTtc: Number(item.amountTtc),
-    dueDate: item.dueDate.toISOString().slice(0, 10),
-    status: toInvoiceStatus(item.status),
-  }));
+    return records.map((item) => ({
+      id: item.id,
+      clientId: item.clientId,
+      number: item.number,
+      amountHt: Number(item.amountHt),
+      amountTtc: Number(item.amountTtc),
+      dueDate: item.dueDate.toISOString().slice(0, 10),
+      status: toInvoiceStatus(item.status),
+    }));
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    return [...getMemoryStore(userId).invoices];
+  }
 }
 
 export async function getInvoiceById(userId: string, id: string): Promise<Invoice | null> {
-  const item = await prisma.invoice.findFirst({
-    where: {
-      id,
-      userId,
-    },
-  });
+  try {
+    const item = await prisma.invoice.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
 
-  if (!item) {
-    return null;
+    if (!item) {
+      return null;
+    }
+
+    return {
+      id: item.id,
+      clientId: item.clientId,
+      number: item.number,
+      amountHt: Number(item.amountHt),
+      amountTtc: Number(item.amountTtc),
+      dueDate: item.dueDate.toISOString().slice(0, 10),
+      status: toInvoiceStatus(item.status),
+    };
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    return getMemoryStore(userId).invoices.find((item) => item.id === id) ?? null;
   }
-
-  return {
-    id: item.id,
-    clientId: item.clientId,
-    number: item.number,
-    amountHt: Number(item.amountHt),
-    amountTtc: Number(item.amountTtc),
-    dueDate: item.dueDate.toISOString().slice(0, 10),
-    status: toInvoiceStatus(item.status),
-  };
 }
 
 export async function createInvoice(userId: string, input: CreateInvoiceInput): Promise<Invoice> {
-  const number = await generateNextInvoiceNumber(userId);
-  const totals = computeTotals(input.amountHt, input.taxRate);
+  try {
+    const number = await generateNextInvoiceNumber(userId);
+    const totals = computeTotals(input.amountHt, input.taxRate);
 
-  const created = await prisma.invoice.create({
-    data: {
-      userId,
+    const created = await prisma.invoice.create({
+      data: {
+        userId,
+        clientId: input.clientId,
+        number,
+        dueDate: new Date(input.dueDate),
+        amountHt: totals.amountHt,
+        taxRate: totals.taxRate,
+        amountTax: totals.amountTax,
+        amountTtc: totals.amountTtc,
+        status: fromInvoiceStatus(input.status ?? 'brouillon'),
+      },
+    });
+
+    return {
+      id: created.id,
+      clientId: created.clientId,
+      number: created.number,
+      amountHt: Number(created.amountHt),
+      amountTtc: Number(created.amountTtc),
+      dueDate: created.dueDate.toISOString().slice(0, 10),
+      status: toInvoiceStatus(created.status),
+    };
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    const store = getMemoryStore(userId);
+    const totals = computeTotals(input.amountHt, input.taxRate);
+    const year = new Date().getFullYear();
+    const prefix = `FAC-${year}-`;
+    const nextSequence = String(store.invoices.length + 1).padStart(4, '0');
+
+    const created: Invoice = {
+      id: generateId('invoice'),
       clientId: input.clientId,
-      number,
-      dueDate: new Date(input.dueDate),
+      number: `${prefix}${nextSequence}`,
       amountHt: totals.amountHt,
-      taxRate: totals.taxRate,
-      amountTax: totals.amountTax,
       amountTtc: totals.amountTtc,
-      status: fromInvoiceStatus(input.status ?? 'brouillon'),
-    },
-  });
+      dueDate: input.dueDate,
+      status: input.status ?? 'brouillon',
+    };
 
-  return {
-    id: created.id,
-    clientId: created.clientId,
-    number: created.number,
-    amountHt: Number(created.amountHt),
-    amountTtc: Number(created.amountTtc),
-    dueDate: created.dueDate.toISOString().slice(0, 10),
-    status: toInvoiceStatus(created.status),
-  };
+    store.invoices.unshift(created);
+    return created;
+  }
 }
 
 export async function markInvoicePaid(userId: string, id: string): Promise<Invoice> {
-  const existing = await prisma.invoice.findFirst({
-    where: {
-      id,
-      userId,
-    },
-  });
+  try {
+    const existing = await prisma.invoice.findFirst({
+      where: {
+        id,
+        userId,
+      },
+    });
 
-  if (!existing) {
-    throw new Error('NOT_FOUND');
-  }
+    if (!existing) {
+      throw new Error('NOT_FOUND');
+    }
 
-  if (existing.status === 'PAYEE') {
+    if (existing.status === 'PAYEE') {
+      return {
+        id: existing.id,
+        clientId: existing.clientId,
+        number: existing.number,
+        amountHt: Number(existing.amountHt),
+        amountTtc: Number(existing.amountTtc),
+        dueDate: existing.dueDate.toISOString().slice(0, 10),
+        status: 'payee',
+      };
+    }
+
+    const updated = await prisma.invoice.update({
+      where: { id: existing.id },
+      data: {
+        status: 'PAYEE',
+        paidAt: new Date(),
+      },
+    });
+
     return {
-      id: existing.id,
-      clientId: existing.clientId,
-      number: existing.number,
-      amountHt: Number(existing.amountHt),
-      amountTtc: Number(existing.amountTtc),
-      dueDate: existing.dueDate.toISOString().slice(0, 10),
+      id: updated.id,
+      clientId: updated.clientId,
+      number: updated.number,
+      amountHt: Number(updated.amountHt),
+      amountTtc: Number(updated.amountTtc),
+      dueDate: updated.dueDate.toISOString().slice(0, 10),
       status: 'payee',
     };
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    const store = getMemoryStore(userId);
+    const invoice = store.invoices.find((item) => item.id === id);
+    if (!invoice) {
+      throw new Error('NOT_FOUND');
+    }
+
+    if (invoice.status !== 'payee') {
+      invoice.status = 'payee';
+    }
+
+    return { ...invoice };
   }
-
-  const updated = await prisma.invoice.update({
-    where: { id: existing.id },
-    data: {
-      status: 'PAYEE',
-      paidAt: new Date(),
-    },
-  });
-
-  return {
-    id: updated.id,
-    clientId: updated.clientId,
-    number: updated.number,
-    amountHt: Number(updated.amountHt),
-    amountTtc: Number(updated.amountTtc),
-    dueDate: updated.dueDate.toISOString().slice(0, 10),
-    status: 'payee',
-  };
 }
 
 export async function getContracts(userId: string): Promise<Contract[]> {
-  const records = await prisma.contract.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const records = await prisma.contract.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  return records.map((item) => ({
-    id: item.id,
-    clientId: item.clientId,
-    title: item.title,
-    startDate: item.startDate.toISOString().slice(0, 10),
-    endDate: item.endDate.toISOString().slice(0, 10),
-    amount: Number(item.amount),
-    status: toContractStatus(item.status),
-  }));
+    return records.map((item) => ({
+      id: item.id,
+      clientId: item.clientId,
+      title: item.title,
+      startDate: item.startDate.toISOString().slice(0, 10),
+      endDate: item.endDate.toISOString().slice(0, 10),
+      amount: Number(item.amount),
+      status: toContractStatus(item.status),
+    }));
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    return [...getMemoryStore(userId).contracts];
+  }
 }
 
 export async function createContract(userId: string, input: CreateContractInput): Promise<Contract> {
-  const created = await prisma.contract.create({
-    data: {
-      userId,
+  try {
+    const created = await prisma.contract.create({
+      data: {
+        userId,
+        clientId: input.clientId,
+        title: input.title,
+        startDate: new Date(input.startDate),
+        endDate: new Date(input.endDate),
+        amount: input.amount,
+        status: fromContractStatus(input.status),
+      },
+    });
+
+    return {
+      id: created.id,
+      clientId: created.clientId,
+      title: created.title,
+      startDate: created.startDate.toISOString().slice(0, 10),
+      endDate: created.endDate.toISOString().slice(0, 10),
+      amount: Number(created.amount),
+      status: toContractStatus(created.status),
+    };
+  } catch (error) {
+    if (!isDatabaseUnavailable(error)) {
+      throw error;
+    }
+
+    const created: Contract = {
+      id: generateId('contract'),
       clientId: input.clientId,
       title: input.title,
-      startDate: new Date(input.startDate),
-      endDate: new Date(input.endDate),
+      startDate: input.startDate,
+      endDate: input.endDate,
       amount: input.amount,
-      status: fromContractStatus(input.status),
-    },
-  });
+      status: input.status,
+    };
 
-  return {
-    id: created.id,
-    clientId: created.clientId,
-    title: created.title,
-    startDate: created.startDate.toISOString().slice(0, 10),
-    endDate: created.endDate.toISOString().slice(0, 10),
-    amount: Number(created.amount),
-    status: toContractStatus(created.status),
-  };
+    const store = getMemoryStore(userId);
+    store.contracts.unshift(created);
+
+    return created;
+  }
 }
