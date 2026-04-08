@@ -29,20 +29,7 @@ export default async function DashboardPage() {
         <button className="header-cta" type="button">Nouveau document</button>
       </section>
 
-      <nav className="dashboard-tabs panel" aria-label="Navigation dashboard">
-        {buildMainNavigation('dashboard').map((item) => (
-          <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-
       <div className="content-column">
-        <section className="panel dashboard-hero">
-          <h2>Cockpit administratif freelance</h2>
-          <p className="panel-meta">Suis tes factures, contrats et relances dans une seule interface claire.</p>
-        </section>
-
         <section className="panel profile-panel">
           <div>
             <p className="eyebrow">Profil entreprise</p>
@@ -51,6 +38,14 @@ export default async function DashboardPage() {
           </div>
           <Link href="/parametres" className="header-cta settings-pill">Parametres</Link>
         </section>
+
+        <nav className="dashboard-tabs panel" aria-label="Navigation dashboard">
+          {buildMainNavigation('dashboard').map((item) => (
+            <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
         <section className="dashboard-metrics">
           <article className="panel metric-card">
