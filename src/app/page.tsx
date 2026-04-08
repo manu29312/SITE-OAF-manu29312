@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { SignedIn, SignedOut, SignInButton, SignUpButton } from '@clerk/nextjs';
+import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
 
 export default function HomePage() {
   return (
@@ -10,17 +10,17 @@ export default function HomePage() {
           Authentification Clerk et base Prisma sont maintenant en place pour demarrer le MVP sur des fondations solides.
         </p>
         <div className="panel-actions" style={{ marginTop: 16 }}>
-          <SignedOut>
+          <Show when="signed-out">
             <SignInButton mode="modal" forceRedirectUrl="/dashboard">
               <button type="button" className="header-cta">Se connecter</button>
             </SignInButton>
             <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
               <button type="button" className="header-cta">Creer un compte</button>
             </SignUpButton>
-          </SignedOut>
-          <SignedIn>
+          </Show>
+          <Show when="signed-in">
             <Link href="/dashboard" className="header-cta">Acceder au dashboard</Link>
-          </SignedIn>
+          </Show>
         </div>
       </section>
     </main>

@@ -123,7 +123,7 @@ export async function getClients(userId: string): Promise<Client[]> {
     orderBy: { createdAt: 'desc' },
   });
 
-  return records.map((item: any) => ({
+  return records.map((item) => ({
     id: item.id,
     name: item.name,
     email: item.email,
@@ -161,7 +161,7 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
     orderBy: { createdAt: 'desc' },
   });
 
-  return records.map((item: any) => ({
+  return records.map((item) => ({
     id: item.id,
     clientId: item.clientId,
     number: item.number,
@@ -273,7 +273,7 @@ export async function getContracts(userId: string): Promise<Contract[]> {
     orderBy: { createdAt: 'desc' },
   });
 
-  return records.map((item: any) => ({
+  return records.map((item) => ({
     id: item.id,
     clientId: item.clientId,
     title: item.title,
