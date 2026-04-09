@@ -1,9 +1,9 @@
 import { InvoicesWorkspace } from '@/features/invoices/InvoicesWorkspace';
-import { ensureAppUser, requireClerkUserId } from '@/lib/auth-user';
+import { ensureAppUser, requireClerkUserIdOrRedirect } from '@/lib/auth-user';
 import { getClients, getInvoices } from '@/lib/mock-db';
 
 export default async function FacturesPage() {
-  const clerkUserId = await requireClerkUserId();
+  const clerkUserId = await requireClerkUserIdOrRedirect();
   const appUserId = await ensureAppUser(clerkUserId);
   const [invoices, clients] = await Promise.all([
     getInvoices(appUserId),

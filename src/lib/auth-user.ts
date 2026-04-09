@@ -1,5 +1,6 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+
+const LOCAL_USER_ID = 'local-user';
 
 function isDatabaseUnavailable(error: unknown): boolean {
   if (!(error instanceof Error)) {
@@ -14,20 +15,16 @@ function isDatabaseUnavailable(error: unknown): boolean {
 }
 
 export async function requireClerkUserId(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error('UNAUTHORIZED');
-  }
-  return userId;
+  return LOCAL_USER_ID;
+}
+
+export async function requireClerkUserIdOrRedirect(): Promise<string> {
+  return LOCAL_USER_ID;
 }
 
 export async function ensureAppUser(clerkUserId: string): Promise<string> {
-  const clerkProfile = await currentUser();
-  const email = clerkProfile?.emailAddresses[0]?.emailAddress;
-  const name =
-    [clerkProfile?.firstName, clerkProfile?.lastName].filter(Boolean).join(' ') ||
-    clerkProfile?.username ||
-    null;
+  const email = 'local@site-oaf.app';
+  const name = 'Local User';
 
   try {
     const user = await prisma.user.upsert({

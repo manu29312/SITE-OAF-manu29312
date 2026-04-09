@@ -1,14 +1,14 @@
 :root {
-  --bg: #f4f3ef;
-  --bg-alt: #fffdf8;
-  --surface: rgba(255, 253, 248, 0.9);
-  --surface-strong: #fffdf8;
-  --text: #1f262c;
-  --muted: #5f6a73;
-  --accent: #c4572a;
-  --accent-soft: #17616f;
-  --border: #e6ddcf;
-  --shadow: 0 18px 40px rgba(31, 38, 44, 0.08);
+  --bg: #f3f6fb;
+  --bg-alt: #ffffff;
+  --surface: rgba(255, 255, 255, 0.9);
+  --surface-strong: #ffffff;
+  --text: #132238;
+  --muted: #5a6b80;
+  --accent: #2563eb;
+  --accent-soft: #0f766e;
+  --border: #dbe6f2;
+  --shadow: 0 14px 36px rgba(19, 34, 56, 0.08);
   --radius: 22px;
 }
 
@@ -26,9 +26,9 @@ body {
   font-family: var(--font-body), sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(196, 87, 42, 0.12), transparent 24%),
-    radial-gradient(circle at 85% 15%, rgba(23, 97, 111, 0.12), transparent 22%),
-    linear-gradient(180deg, #f8f4eb 0%, var(--bg) 100%);
+    radial-gradient(circle at 5% 8%, rgba(37, 99, 235, 0.11), transparent 23%),
+    radial-gradient(circle at 92% 10%, rgba(15, 118, 110, 0.1), transparent 22%),
+    linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
 }
 
 body::before {
@@ -36,10 +36,10 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: linear-gradient(rgba(31, 38, 44, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(31, 38, 44, 0.02) 1px, transparent 1px);
-  background-size: 42px 42px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.2), transparent 70%);
+  background-image: linear-gradient(rgba(19, 34, 56, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 34, 56, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 70%);
 }
 
 h1,
@@ -114,9 +114,9 @@ a {
 }
 
 .header-cta {
-  border: 1px solid #d8b294;
-  background: #fff2e6;
-  color: #7a3f25;
+  border: 1px solid #c8d8ea;
+  background: #eff5ff;
+  color: #1d4f91;
   border-radius: 999px;
   padding: 0.55rem 0.95rem;
   font-weight: 700;
@@ -126,7 +126,7 @@ a {
 
 .header-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(196, 87, 42, 0.2);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.2);
 }
 
 .hero {
@@ -218,7 +218,7 @@ a {
 .section-head {
   display: flex;
   justify-content: space-between;
-  align-items: end;
+  align-items: flex-end;
   gap: 16px;
   margin-bottom: 14px;
 }
@@ -459,7 +459,7 @@ a {
 
 .dashboard-topbar {
   border-radius: 20px;
-  padding: 14px 6px 18px;
+  padding: 14px 8px 18px;
   margin-bottom: 12px;
   display: flex;
   justify-content: space-between;
@@ -484,8 +484,8 @@ a {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #de864f, #c4572a);
-  box-shadow: 0 0 0 4px rgba(196, 87, 42, 0.12);
+  background: linear-gradient(135deg, #2563eb, #0f766e);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
 .dashboard-tabs {
@@ -495,24 +495,37 @@ a {
   border-radius: 16px;
   padding: 10px;
   margin-bottom: 20px;
+  position: relative;
+  z-index: 4;
+  isolation: isolate;
 }
 
 .dashboard-tab {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 0.62rem 1.05rem;
   border-radius: 12px;
   font-weight: 700;
   color: #556474;
   text-decoration: none;
   border: 1px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .dashboard-tab:hover,
 .dashboard-tab.active {
-  background: #fffaf1;
-  color: #233041;
-  border-color: #e6ddcf;
+  background: #eef4ff;
+  color: #1d3d6b;
+  border-color: #cddcef;
+  transform: translateY(-1px);
+}
+
+.dashboard-tab:focus-visible {
+  outline: 2px solid #1e7b8f;
+  outline-offset: 2px;
 }
 
 .dashboard-hero h2 {
@@ -526,10 +539,31 @@ a {
   gap: 14px;
 }
 
+.profile-progress-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-progress-track {
+  width: min(320px, 80vw);
+  height: 10px;
+  border-radius: 999px;
+  background: #f0e5d4;
+  overflow: hidden;
+}
+
+.profile-progress-track span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #1e7b8f, #c4572a);
+}
+
 .settings-pill {
-  background: #d8edf1;
-  color: #215d69;
-  border-color: #b9dfe6;
+  background: #d6f3ee;
+  color: #125c54;
+  border-color: #b6e2db;
 }
 
 .dashboard-metrics {
@@ -605,13 +639,36 @@ a {
 }
 
 .header-cta.solid {
-  background: #1e7b8f;
-  border-color: #1e7b8f;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 
+.page-context-panel {
+  border: 1px solid #d9e5f4;
+  background: linear-gradient(132deg, rgba(255, 255, 255, 0.95), rgba(242, 248, 255, 0.95));
+}
+
+.context-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.context-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d4e2f2;
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  background: #f4f8ff;
+  color: #31557e;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .chart-panel {
-  background: linear-gradient(130deg, rgba(255, 248, 236, 0.92), rgba(199, 231, 236, 0.8));
+  background: linear-gradient(130deg, rgba(245, 249, 255, 0.95), rgba(226, 241, 243, 0.9));
 }
 
 .chart-head {
@@ -718,10 +775,10 @@ a {
 }
 
 .invoice-status-card {
-  border: 1px solid #e7dccd;
+  border: 1px solid #dbe6f2;
   border-radius: 14px;
   padding: 12px;
-  background: rgba(255, 252, 246, 0.8);
+  background: rgba(248, 252, 255, 0.86);
 }
 
 .invoice-status-label {
@@ -753,7 +810,7 @@ a {
 }
 
 .invoice-table-panel {
-  background: linear-gradient(132deg, rgba(255, 252, 246, 0.92), rgba(203, 231, 237, 0.7));
+  background: linear-gradient(132deg, rgba(249, 252, 255, 0.96), rgba(227, 241, 252, 0.8));
 }
 
 .invoice-table {
@@ -763,6 +820,105 @@ a {
 .invoice-table td,
 .invoice-table th {
   white-space: nowrap;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.doc-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.doc-form-column,
+.doc-preview-column {
+  display: grid;
+  gap: 12px;
+}
+
+.doc-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.doc-tab-btn {
+  border: 1px solid #e2d7c7;
+  background: #fffdfa;
+  color: #334150;
+  border-radius: 14px;
+  padding: 0.52rem 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.doc-tab-btn.active {
+  background: #edf4ff;
+  border-color: #bcd2ee;
+  color: #194d8b;
+}
+
+.pdf-preview-sheet {
+  border: 1px solid #d6e4f4;
+  border-radius: 16px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 12px 24px rgba(31, 38, 44, 0.08);
+}
+
+.pdf-preview-sheet h3 {
+  margin-bottom: 8px;
+  font-family: var(--font-display), sans-serif;
+}
+
+.pdf-preview-sheet h4 {
+  margin: 0 0 8px;
+  font-family: var(--font-display), sans-serif;
+}
+
+.pdf-preview-sheet hr {
+  border: 0;
+  border-top: 1px solid #eadfce;
+  margin: 12px 0;
+}
+
+.invoice-preview-totals {
+  margin-top: 10px;
+  border-top: 1px dashed #e2d7c7;
+  padding-top: 8px;
+  display: grid;
+  gap: 5px;
+}
+
+.doc-sticky-footer {
+  position: sticky;
+  bottom: 8px;
+  z-index: 3;
+  border: 1px solid #d5e2f2;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.totals-rows {
+  display: grid;
+  gap: 4px;
+  color: #435261;
+}
+
+.total-ttc {
+  font-weight: 800;
+  color: #122439;
 }
 
 .contract-toolbar-panel {
@@ -941,7 +1097,8 @@ a {
 .modal-form-grid label {
   display: grid;
   gap: 6px;
-  color: #5f6a73;
+  color: #54667a;
+  font-weight: 600;
 }
 
 .modal-form-grid input,
@@ -953,6 +1110,19 @@ a {
   color: #273340;
   padding: 0.6rem 0.72rem;
   font: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.modal-form-grid input:focus,
+.modal-form-grid select:focus,
+.modal-form-grid textarea:focus,
+.settings-fields input:focus,
+.settings-fields select:focus,
+.invoice-form-grid input:focus {
+  border-color: #1e7b8f;
+  box-shadow: 0 0 0 3px rgba(30, 123, 143, 0.15);
+  outline: none;
+  background: #fff;
 }
 
 .modal-full-width {
@@ -971,6 +1141,10 @@ a {
 }
 
 @media (max-width: 980px) {
+  .doc-workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
   .dashboard-topbar {
     padding-left: 14px;
     padding-right: 14px;

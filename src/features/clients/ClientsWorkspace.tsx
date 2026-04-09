@@ -1,8 +1,7 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
-import { Header } from '@/components/Header';
-import { Sidebar } from '@/components/Sidebar';
 import { ClientsPanel } from '@/features/clients/ClientsPanel';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import type { Client } from '@/types/client';
@@ -33,6 +32,8 @@ export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
   const [form, setForm] = useState<NewClientForm>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const activeCount = clientsRecap.filter((client) => client.status === 'actif').length;
+  const inactiveCount = clientsRecap.length - activeCount;
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -76,27 +77,44 @@ export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
 
   return (
     <>
-      <Header
-        title="Clients"
-        subtitle="Acces direct a la liste des clients relies a ton compte authentifie."
-        ctaLabel="Nouveau client"
-        onCtaClick={() => setIsModalOpen(true)}
-      />
+      <main className="app-shell">
+        <section className="dashboard-topbar panel">
+          <div className="dashboard-brand">
+            <span className="brand-dot" aria-hidden="true" />
+            <h1>OAF Admin</h1>
+          </div>
+          <button className="header-cta solid" type="button" onClick={() => setIsModalOpen(true)}>
+            Nouveau client
+          </button>
+        </section>
 
-      <div className="shell-grid">
-        <Sidebar items={buildMainNavigation('clients')} />
+        <nav className="dashboard-tabs panel" aria-label="Navigation principale">
+          {buildMainNavigation('clients').map((item) => (
+            <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="content-column">
-          <section className="panel">
-            <h2>Page clients</h2>
+          <section className="panel page-context-panel">
+            <div className="panel-head-inline">
+              <h2>Espace Clients</h2>
+              <span className="status-chip">CRM freelance</span>
+            </div>
             <p className="panel-meta">
-              Cette page est protegee par Clerk et affiche uniquement les clients de ton espace.
+              Gere tes clients, leurs coordonnees et leur statut pour alimenter automatiquement factures et contrats.
             </p>
+            <div className="context-pills">
+              <span className="context-pill">Total: {clientsRecap.length}</span>
+              <span className="context-pill">Actifs: {activeCount}</span>
+              <span className="context-pill">Inactifs: {inactiveCount}</span>
+            </div>
           </section>
 
           <ClientsPanel clients={clientsRecap} />
         </div>
-      </div>
+      </main>
 
       {isModalOpen ? (
         <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Nouveau client">

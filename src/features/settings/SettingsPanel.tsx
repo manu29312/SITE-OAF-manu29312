@@ -4,7 +4,12 @@ import { FormEvent, useMemo, useState } from 'react';
 
 type SettingsState = {
   companyName: string;
+  legalStatus: 'auto-entrepreneur' | 'sasu' | 'pme' | 'intl';
   siren: string;
+  vatNumber: string;
+  address: string;
+  iban: string;
+  logoUrl: string;
   city: string;
   supportEmail: string;
   vatRate: string;
@@ -22,7 +27,12 @@ type SettingsState = {
 
 const INITIAL_STATE: SettingsState = {
   companyName: 'OAF Studio',
+  legalStatus: 'auto-entrepreneur',
   siren: '123 456 789',
+  vatNumber: 'FR12 123456789',
+  address: '12 rue des Freelances, 69000 Lyon',
+  iban: 'FR76 3000 4000 5000 6000 7000 890',
+  logoUrl: '',
   city: 'Lyon',
   supportEmail: 'contact@oaf-studio.fr',
   vatRate: '20',
@@ -76,11 +86,62 @@ export function SettingsPanel() {
           </label>
 
           <label>
+            Statut
+            <select
+              value={settings.legalStatus}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  legalStatus: event.target.value as SettingsState['legalStatus'],
+                }))
+              }
+            >
+              <option value="auto-entrepreneur">Auto-entrepreneur</option>
+              <option value="sasu">SASU</option>
+              <option value="pme">PME</option>
+              <option value="intl">International</option>
+            </select>
+          </label>
+
+          <label>
             SIREN
             <input
               value={settings.siren}
               onChange={(event) => setSettings((prev) => ({ ...prev, siren: event.target.value }))}
               required
+            />
+          </label>
+
+          <label>
+            TVA intracom
+            <input
+              value={settings.vatNumber}
+              onChange={(event) => setSettings((prev) => ({ ...prev, vatNumber: event.target.value }))}
+            />
+          </label>
+
+          <label className="switch-inline">
+            Adresse
+            <input
+              value={settings.address}
+              onChange={(event) => setSettings((prev) => ({ ...prev, address: event.target.value }))}
+            />
+          </label>
+
+          <label className="switch-inline">
+            IBAN
+            <input
+              value={settings.iban}
+              onChange={(event) => setSettings((prev) => ({ ...prev, iban: event.target.value }))}
+            />
+          </label>
+
+          <label className="switch-inline">
+            URL logo
+            <input
+              value={settings.logoUrl}
+              onChange={(event) => setSettings((prev) => ({ ...prev, logoUrl: event.target.value }))}
+              placeholder="https://.../logo.png"
             />
           </label>
 
