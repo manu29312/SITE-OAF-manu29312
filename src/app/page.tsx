@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { SignedIn, SignedOut, SignInButton, SignUpButton } from '@clerk/nextjs';
+import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { homePageContent } from '@/lib/homepage-content';
 
@@ -11,9 +11,9 @@ export default function HomePage() {
           <span className="brand-dot" aria-hidden="true" />
           <h1>OAF Admin</h1>
         </div>
-        <SignedIn>
+        <Show when="signed-in">
           <Link className="header-cta" href="/dashboard">Vue dashboard detaillee</Link>
-        </SignedIn>
+        </Show>
       </section>
 
       <nav className="dashboard-tabs panel" aria-label="Navigation principale">
@@ -30,17 +30,17 @@ export default function HomePage() {
           <p className="panel-meta">{homePageContent.hero.subtitle}</p>
 
           <div className="panel-actions split">
-            <SignedOut>
+            <Show when="signed-out">
               <SignInButton mode="modal" forceRedirectUrl="/dashboard">
                 <button type="button" className="header-cta solid">Se connecter</button>
               </SignInButton>
               <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
                 <button type="button" className="header-cta">Creer un compte</button>
               </SignUpButton>
-            </SignedOut>
-            <SignedIn>
+            </Show>
+            <Show when="signed-in">
               <p className="panel-meta">Connecte: tu peux modifier cette page et ajouter tes propres sections.</p>
-            </SignedIn>
+            </Show>
           </div>
         </section>
 
