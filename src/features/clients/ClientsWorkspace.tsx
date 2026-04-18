@@ -14,6 +14,7 @@ type NewClientForm = {
   nom: string;
   prenom: string;
   email: string;
+  company: string;
   adresse: string;
   kbis: string;
 };
@@ -22,6 +23,7 @@ const INITIAL_FORM: NewClientForm = {
   nom: '',
   prenom: '',
   email: '',
+  company: '',
   adresse: '',
   kbis: '',
 };
@@ -53,7 +55,8 @@ export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: fullName || form.nom,
-          company: `KBIS ${form.kbis}`,
+          company: form.company,
+          kbis: form.kbis,
           email: form.email,
           city: form.adresse,
           status: 'actif',
@@ -148,6 +151,16 @@ export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
               </label>
 
               <label className="modal-full-width">
+                Societe
+                <input
+                  value={form.company}
+                  onChange={(event) => setForm((prev) => ({ ...prev, company: event.target.value }))}
+                  placeholder="Ex: Studio Atlas"
+                  required
+                />
+              </label>
+
+              <label className="modal-full-width">
                 Email
                 <input
                   type="email"
@@ -173,7 +186,6 @@ export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
                   value={form.kbis}
                   onChange={(event) => setForm((prev) => ({ ...prev, kbis: event.target.value }))}
                   placeholder="Ex: RCS Lyon B 123 456 789"
-                  required
                 />
               </label>
 

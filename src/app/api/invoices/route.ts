@@ -1,20 +1,16 @@
-import { NextResponse } from 'next/server';
 import { ensureAppUser, requireClerkUserId } from '@/lib/auth-user';
 import { createInvoice, getInvoices } from '@/lib/mock-db';
-import { isPositiveAmount, requireText } from '@/lib/validators';
+import { apiData, apiError, fromCaughtError } from '@/lib/api-response';
+import { isInvoiceStatus, isIsoDate, isNonNegativeNumber, isPositiveAmount, requireText } from '@/lib/validators';
 
 export async function GET() {
   try {
     const clerkUserId = await requireClerkUserId();
     const appUserId = await ensureAppUser(clerkUserId);
     const invoices = await getInvoices(appUserId);
-    return NextResponse.json({ data: invoices });
+    return apiData(invoices);
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-    }
-
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    return fromCaughtError(error);
   }
 }
 
@@ -25,18 +21,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const amountHt = Number(body?.amountHt ?? 0);
     const taxRate = Number(body?.taxRate ?? 20);
+    const rawStatus = isInvoiceStatus(body?.status) ? body.status : 'brouillon';
+    const requestedStatus = rawStatus === 'payee' ? 'brouillon' : rawStatus;
 
     if (
       !requireText(body?.clientId ?? '') ||
-      !requireText(body?.dueDate ?? '') ||
+      !isIsoDate(body?.dueDate ?? '') ||
       !isPositiveAmount(amountHt) ||
-      !Number.isFinite(taxRate) ||
-      taxRate < 0
+      !isNonNegativeNumber(taxRate)
     ) {
-      return NextResponse.json(
-        { error: 'Payload facture invalide.' },
-        { status: 400 }
-      );
+      return apiError('Payload facture invalide.', 'VALIDATION_ERROR', 400);
     }
 
     const created = await createInvoice(appUserId, {
@@ -44,15 +38,11 @@ export async function POST(request: Request) {
       amountHt,
       taxRate,
       dueDate: body.dueDate,
-      status: body.status ?? 'brouillon',
+      status: requestedStatus ?? 'brouillon',
     });
 
-    return NextResponse.json({ data: created }, { status: 201 });
+    return apiData(created, 201);
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-    }
-
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    return fromCaughtError(error);
   }
 }

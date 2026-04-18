@@ -316,7 +316,6 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                 >
                   <option value="brouillon">Brouillon</option>
                   <option value="envoyee">Envoyee</option>
-                  <option value="payee">Payee</option>
                   <option value="retard">Retard</option>
                 </select>
               </label>

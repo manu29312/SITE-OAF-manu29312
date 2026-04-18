@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { homePageContent } from '@/lib/homepage-content';
+import { isLocalDevAuthEnabled } from '@/lib/auth-user';
 
 export default function HomePage() {
+  const localAuthEnabled = isLocalDevAuthEnabled();
+
   return (
     <main className="app-shell">
       <section className="dashboard-topbar panel">
@@ -28,7 +31,11 @@ export default function HomePage() {
 
           <div className="panel-actions split">
             <Link className="header-cta solid" href="/dashboard">Acceder au dashboard</Link>
-            <p className="panel-meta">Mode local actif: authentification externe desactivee.</p>
+            <p className="panel-meta">
+              {localAuthEnabled
+                ? 'Mode local actif: authentification externe desactivee.'
+                : 'Authentification Clerk activee.'}
+            </p>
           </div>
         </section>
 

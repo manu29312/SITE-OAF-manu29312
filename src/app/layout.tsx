@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${spaceGrotesk.variable} ${ibmPlexSans.variable}`}>
-      <body>
+      <body className="app-body">
         {children}
       </body>
     </html>

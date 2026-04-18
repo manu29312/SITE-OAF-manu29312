@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 type SettingsState = {
   companyName: string;
@@ -48,9 +48,46 @@ const INITIAL_STATE: SettingsState = {
   sessionDuration: '24h',
 };
 
+const SETTINGS_STORAGE_KEY = 'site-oaf.settings';
+
+type FeedbackState = {
+  tone: 'info' | 'success' | 'error';
+  message: string;
+};
+
+function readStoredSettings(): Partial<SettingsState> | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<SettingsState>;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function SettingsPanel() {
   const [settings, setSettings] = useState<SettingsState>(INITIAL_STATE);
-  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const stored = readStoredSettings();
+    if (stored) {
+      setSettings((prev) => ({ ...prev, ...stored }));
+      setFeedback({ tone: 'info', message: 'Parametres charges depuis ce navigateur.' });
+    }
+
+    setIsLoading(false);
+  }, []);
 
   const previewInvoice = useMemo(() => {
     const year = new Date().getFullYear();
@@ -59,12 +96,31 @@ export function SettingsPanel() {
 
   const handleSave = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatusMessage('Parametres enregistres localement.');
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setIsSaving(true);
+    setFeedback(null);
+
+    try {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      setFeedback({ tone: 'success', message: 'Parametres enregistres localement.' });
+    } catch {
+      setFeedback({ tone: 'error', message: 'Impossible de sauvegarder les parametres dans ce navigateur.' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetAll = () => {
     setSettings(INITIAL_STATE);
-    setStatusMessage('Parametres reinitialises.');
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    }
+
+    setFeedback({ tone: 'info', message: 'Parametres reinitialises.' });
   };
 
   return (
@@ -315,14 +371,16 @@ export function SettingsPanel() {
 
       <section className="panel settings-actions">
         <div className="panel-actions split">
-          <button type="button" className="invoice-ghost-btn" onClick={resetAll}>
+          <button type="button" className="invoice-ghost-btn" onClick={resetAll} disabled={isLoading || isSaving}>
             Reinitialiser
           </button>
-          <button type="submit" className="header-cta solid">
-            Enregistrer les parametres
+          <button type="submit" className="header-cta solid" disabled={isLoading || isSaving}>
+            {isLoading ? 'Chargement...' : isSaving ? 'Enregistrement...' : 'Enregistrer les parametres'}
           </button>
         </div>
-        {statusMessage ? <p className="panel-meta settings-feedback">{statusMessage}</p> : null}
+        {feedback ? (
+          <p className={`panel-meta settings-feedback ${feedback.tone}`}>{feedback.message}</p>
+        ) : null}
       </section>
     </form>
   );
