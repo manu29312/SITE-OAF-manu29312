@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { ensureAppUser, requireClerkUserId } from '@/lib/auth-user';
 import { createClient, getClients } from '@/lib/mock-db';
-import { isEmail, requireText } from '@/lib/validators';
+import { apiData, apiError, fromCaughtError } from '@/lib/api-response';
+import { isClientStatus, isEmail, requireText } from '@/lib/validators';
 
 export async function GET(request: Request) {
   try {
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const query = (searchParams.get('query') ?? '').trim().toLowerCase();
 
     if (!query) {
-      return NextResponse.json({ data: clients });
+      return apiData(clients);
     }
 
     const filtered = clients.filter((client) => {
@@ -23,13 +23,9 @@ export async function GET(request: Request) {
       );
     });
 
-    return NextResponse.json({ data: filtered });
+    return apiData(filtered);
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-    }
-
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    return fromCaughtError(error);
   }
 }
 
@@ -44,26 +40,22 @@ export async function POST(request: Request) {
       !requireText(body?.company ?? '') ||
       !isEmail(body?.email ?? '')
     ) {
-      return NextResponse.json(
-        { error: 'Payload client invalide.' },
-        { status: 400 }
-      );
+      return apiError('Payload client invalide.', 'VALIDATION_ERROR', 400);
     }
+
+    const status = isClientStatus(body?.status) ? body.status : 'actif';
 
     const created = await createClient(appUserId, {
       name: body.name,
       email: body.email,
       company: body.company,
-      status: body.status === 'inactif' ? 'inactif' : 'actif',
+      kbis: requireText(body?.kbis ?? '') ? body.kbis : undefined,
+      status,
       city: body.city ?? 'Non renseignee',
     });
 
-    return NextResponse.json({ data: created }, { status: 201 });
+    return apiData(created, 201);
   } catch (error) {
-    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return NextResponse.json({ error: 'Authentification requise.' }, { status: 401 });
-    }
-
-    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 });
+    return fromCaughtError(error);
   }
 }

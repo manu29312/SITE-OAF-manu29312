@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs';
 import { IBM_Plex_Sans, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
@@ -27,19 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${spaceGrotesk.variable} ${ibmPlexSans.variable}`}>
-      <body>
-        <ClerkProvider>
-          <header className="clerk-nav">
-            <Show when="signed-out">
-              <SignInButton />
-              <SignUpButton />
-            </Show>
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
-          </header>
-          {children}
-        </ClerkProvider>
+      <body className="app-body">
+        {children}
       </body>
     </html>
   );

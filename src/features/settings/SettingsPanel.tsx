@@ -1,10 +1,15 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 type SettingsState = {
   companyName: string;
+  legalStatus: 'auto-entrepreneur' | 'sasu' | 'pme' | 'intl';
   siren: string;
+  vatNumber: string;
+  address: string;
+  iban: string;
+  logoUrl: string;
   city: string;
   supportEmail: string;
   vatRate: string;
@@ -22,7 +27,12 @@ type SettingsState = {
 
 const INITIAL_STATE: SettingsState = {
   companyName: 'OAF Studio',
+  legalStatus: 'auto-entrepreneur',
   siren: '123 456 789',
+  vatNumber: 'FR12 123456789',
+  address: '12 rue des Freelances, 69000 Lyon',
+  iban: 'FR76 3000 4000 5000 6000 7000 890',
+  logoUrl: '',
   city: 'Lyon',
   supportEmail: 'contact@oaf-studio.fr',
   vatRate: '20',
@@ -38,9 +48,46 @@ const INITIAL_STATE: SettingsState = {
   sessionDuration: '24h',
 };
 
+const SETTINGS_STORAGE_KEY = 'site-oaf.settings';
+
+type FeedbackState = {
+  tone: 'info' | 'success' | 'error';
+  message: string;
+};
+
+function readStoredSettings(): Partial<SettingsState> | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<SettingsState>;
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function SettingsPanel() {
   const [settings, setSettings] = useState<SettingsState>(INITIAL_STATE);
-  const [statusMessage, setStatusMessage] = useState<string>('');
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const stored = readStoredSettings();
+    if (stored) {
+      setSettings((prev) => ({ ...prev, ...stored }));
+      setFeedback({ tone: 'info', message: 'Parametres charges depuis ce navigateur.' });
+    }
+
+    setIsLoading(false);
+  }, []);
 
   const previewInvoice = useMemo(() => {
     const year = new Date().getFullYear();
@@ -49,12 +96,31 @@ export function SettingsPanel() {
 
   const handleSave = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatusMessage('Parametres enregistres localement.');
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setIsSaving(true);
+    setFeedback(null);
+
+    try {
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      setFeedback({ tone: 'success', message: 'Parametres enregistres localement.' });
+    } catch {
+      setFeedback({ tone: 'error', message: 'Impossible de sauvegarder les parametres dans ce navigateur.' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetAll = () => {
     setSettings(INITIAL_STATE);
-    setStatusMessage('Parametres reinitialises.');
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    }
+
+    setFeedback({ tone: 'info', message: 'Parametres reinitialises.' });
   };
 
   return (
@@ -76,11 +142,62 @@ export function SettingsPanel() {
           </label>
 
           <label>
+            Statut
+            <select
+              value={settings.legalStatus}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  legalStatus: event.target.value as SettingsState['legalStatus'],
+                }))
+              }
+            >
+              <option value="auto-entrepreneur">Auto-entrepreneur</option>
+              <option value="sasu">SASU</option>
+              <option value="pme">PME</option>
+              <option value="intl">International</option>
+            </select>
+          </label>
+
+          <label>
             SIREN
             <input
               value={settings.siren}
               onChange={(event) => setSettings((prev) => ({ ...prev, siren: event.target.value }))}
               required
+            />
+          </label>
+
+          <label>
+            TVA intracom
+            <input
+              value={settings.vatNumber}
+              onChange={(event) => setSettings((prev) => ({ ...prev, vatNumber: event.target.value }))}
+            />
+          </label>
+
+          <label className="switch-inline">
+            Adresse
+            <input
+              value={settings.address}
+              onChange={(event) => setSettings((prev) => ({ ...prev, address: event.target.value }))}
+            />
+          </label>
+
+          <label className="switch-inline">
+            IBAN
+            <input
+              value={settings.iban}
+              onChange={(event) => setSettings((prev) => ({ ...prev, iban: event.target.value }))}
+            />
+          </label>
+
+          <label className="switch-inline">
+            URL logo
+            <input
+              value={settings.logoUrl}
+              onChange={(event) => setSettings((prev) => ({ ...prev, logoUrl: event.target.value }))}
+              placeholder="https://.../logo.png"
             />
           </label>
 
@@ -254,14 +371,16 @@ export function SettingsPanel() {
 
       <section className="panel settings-actions">
         <div className="panel-actions split">
-          <button type="button" className="invoice-ghost-btn" onClick={resetAll}>
+          <button type="button" className="invoice-ghost-btn" onClick={resetAll} disabled={isLoading || isSaving}>
             Reinitialiser
           </button>
-          <button type="submit" className="header-cta solid">
-            Enregistrer les parametres
+          <button type="submit" className="header-cta solid" disabled={isLoading || isSaving}>
+            {isLoading ? 'Chargement...' : isSaving ? 'Enregistrement...' : 'Enregistrer les parametres'}
           </button>
         </div>
-        {statusMessage ? <p className="panel-meta settings-feedback">{statusMessage}</p> : null}
+        {feedback ? (
+          <p className={`panel-meta settings-feedback ${feedback.tone}`}>{feedback.message}</p>
+        ) : null}
       </section>
     </form>
   );

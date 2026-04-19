@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { StatusBadge } from '@/components/StatusBadge';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -15,32 +16,30 @@ type InvoicesWorkspaceProps = {
 
 type NewInvoiceForm = {
   clientId: string;
+  reference: string;
+  issueDate: string;
   dueDate: string;
   amountHt: string;
   taxRate: string;
+  discountRate: string;
+  lineTitle: string;
+  lineQuantity: string;
+  lineUnitPrice: string;
   status: InvoiceStatus;
-};
-
-type InlineClientForm = {
-  name: string;
-  company: string;
-  email: string;
-  city: string;
 };
 
 const INITIAL_FORM: NewInvoiceForm = {
   clientId: '',
+  reference: '',
+  issueDate: new Date().toISOString().slice(0, 10),
   dueDate: '',
   amountHt: '',
   taxRate: '20',
+  discountRate: '0',
+  lineTitle: '',
+  lineQuantity: '1',
+  lineUnitPrice: '',
   status: 'brouillon',
-};
-
-const INITIAL_INLINE_CLIENT: InlineClientForm = {
-  name: '',
-  company: '',
-  email: '',
-  city: '',
 };
 
 function getInvoiceTone(status: Invoice['status']): 'ok' | 'warn' | 'danger' | 'neutral' {
@@ -62,16 +61,18 @@ function formatAmountEur(amount: number): string {
 }
 
 export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspaceProps) {
-  const [clientsList, setClientsList] = useState<Client[]>(clients);
+  const searchParams = useSearchParams();
+  const preselectedClientId = searchParams.get('clientId') ?? '';
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<NewInvoiceForm>(INITIAL_FORM);
-  const [isCreatingInlineClient, setIsCreatingInlineClient] = useState(false);
-  const [inlineClient, setInlineClient] = useState<InlineClientForm>(INITIAL_INLINE_CLIENT);
+  const [form, setForm] = useState<NewInvoiceForm>({
+    ...INITIAL_FORM,
+    clientId: preselectedClientId,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const clientById = useMemo(() => new Map(clientsList.map((client) => [client.id, client.company])), [clientsList]);
+  const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client.company])), [clients]);
 
   const sortedInvoices = useMemo(
     () => [...invoices].sort((left, right) => new Date(right.dueDate).getTime() - new Date(left.dueDate).getTime()),
@@ -88,57 +89,30 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
     [sortedInvoices],
   );
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setErrorMessage('');
-    resetInvoiceModal();
-  };
-
-  const resetInvoiceModal = () => {
-    setForm(INITIAL_FORM);
-    setInlineClient(INITIAL_INLINE_CLIENT);
-    setIsCreatingInlineClient(false);
-  };
+  const amountHt = Number(form.amountHt || 0);
+  const taxRate = Number(form.taxRate || 0);
+  const discountRate = Number(form.discountRate || 0);
+  const lineTotal = Number(form.lineQuantity || 0) * Number(form.lineUnitPrice || 0);
+  const computedHt = amountHt > 0 ? amountHt : lineTotal;
+  const discountAmount = (computedHt * discountRate) / 100;
+  const totalHt = Math.max(0, computedHt - discountAmount);
+  const totalTax = (totalHt * taxRate) / 100;
+  const totalTtc = totalHt + totalTax;
 
   const handleCreateInvoice = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSubmitting(true);
     setErrorMessage('');
+    setSuccessMessage('');
 
     try {
-      let invoiceClientId = form.clientId;
-
-      if (isCreatingInlineClient) {
-        const createClientResponse = await fetch('/api/clients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: inlineClient.name,
-            company: inlineClient.company,
-            email: inlineClient.email,
-            city: inlineClient.city || 'Non renseignee',
-            status: 'actif',
-          }),
-        });
-
-        const createClientPayload = await createClientResponse.json();
-        if (!createClientResponse.ok || !createClientPayload?.data) {
-          setErrorMessage(createClientPayload?.error ?? 'Impossible de creer la fiche client.');
-          return;
-        }
-
-        const createdClient = createClientPayload.data as Client;
-        setClientsList((prev) => [createdClient, ...prev]);
-        invoiceClientId = createdClient.id;
-      }
-
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientId: invoiceClientId,
+          clientId: form.clientId,
           dueDate: form.dueDate,
-          amountHt: Number(form.amountHt),
+          amountHt: totalHt,
           taxRate: Number(form.taxRate),
           status: form.status,
         }),
@@ -151,8 +125,11 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
       }
 
       setInvoices((prev) => [payload.data as Invoice, ...prev]);
-      resetInvoiceModal();
-      setIsModalOpen(false);
+      setForm((prev) => ({
+        ...INITIAL_FORM,
+        clientId: prev.clientId,
+      }));
+      setSuccessMessage('Facture creee. Tu peux maintenant la generer en PDF ou l envoyer.');
     } catch {
       setErrorMessage('Erreur reseau lors de la creation de la facture.');
     } finally {
@@ -160,150 +137,67 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
     }
   };
 
+  const markPaid = async (invoiceId: string) => {
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/mark-paid`, { method: 'POST' });
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.data) {
+        setErrorMessage(payload?.error ?? 'Impossible de marquer la facture comme payee.');
+        return;
+      }
+
+      const updated = payload.data as Invoice;
+      setInvoices((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setSuccessMessage(`Facture ${updated.number} marquee comme payee.`);
+    } catch {
+      setErrorMessage('Erreur reseau pendant la mise a jour du statut.');
+    }
+  };
+
   return (
-    <>
-      <main className="app-shell">
-        <section className="dashboard-topbar panel">
-          <div className="dashboard-brand">
-            <span className="brand-dot" aria-hidden="true" />
-            <h1>OAF Admin</h1>
+    <main className="app-shell">
+      <section className="dashboard-topbar panel">
+        <div className="dashboard-brand">
+          <span className="brand-dot" aria-hidden="true" />
+          <h1>OAF Admin</h1>
+        </div>
+        <Link className="header-cta" href="/contrats">Nouveau contrat</Link>
+      </section>
+
+      <nav className="dashboard-tabs panel" aria-label="Navigation principale">
+        {buildMainNavigation('factures').map((item) => (
+          <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="content-column">
+        <section className="panel page-context-panel">
+          <div className="panel-head-inline">
+            <h2>Espace Factures</h2>
+            <span className="status-chip">Generation + suivi</span>
           </div>
-          <button className="header-cta" type="button">Nouveau document</button>
+          <p className="panel-meta">
+            Cree, previsualise et suis tes factures dans un flux unique avec relances intelligentes.
+          </p>
+          <div className="context-pills">
+            <span className="context-pill">Total: {sortedInvoices.length}</span>
+            <span className="context-pill">En attente: {grouped.attente.length}</span>
+            <span className="context-pill">En retard: {grouped.retard.length}</span>
+          </div>
         </section>
 
-        <nav className="dashboard-tabs panel" aria-label="Navigation principale">
-          {buildMainNavigation('factures').map((item) => (
-            <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="content-column">
-          <section className="panel invoice-toolbar-panel">
-            <div className="invoice-toolbar-head">
-              <h2>Factures</h2>
-              <div className="invoice-toolbar-actions">
-                <button type="button" className="invoice-ghost-btn">Ouvrir brouillon rapide</button>
-                <select aria-label="Filtrer les statuts">
-                  <option>Tous les statuts</option>
-                </select>
-                <button type="button" className="header-cta solid" onClick={() => setIsModalOpen(true)}>
-                  Nouvelle facture
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="panel invoice-status-panel">
-            <h2>Suivi des statuts facture</h2>
-
-          <article className="invoice-status-card">
-            <p className="invoice-status-label ok">Payees ({grouped.payees.length})</p>
-            {grouped.payees.length ? (
-              <ul className="list">
-                {grouped.payees.map((invoice) => (
-                  <li key={invoice.id}>
-                    {(clientById.get(invoice.clientId) ?? 'Entreprise inconnue')} - {invoice.number} - {formatAmountEur(invoice.amountTtc)}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="panel-meta">Aucune facture</p>
-            )}
-          </article>
-
-          <article className="invoice-status-card">
-            <p className="invoice-status-label warn">En attente ({grouped.attente.length})</p>
-            {grouped.attente.length ? (
-              <ul className="list">
-                {grouped.attente.map((invoice) => (
-                  <li key={invoice.id}>
-                    {(clientById.get(invoice.clientId) ?? 'Entreprise inconnue')} - {invoice.number} - {formatAmountEur(invoice.amountTtc)}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="panel-meta">Aucune facture</p>
-            )}
-          </article>
-
-          <article className="invoice-status-card">
-            <p className="invoice-status-label danger">En retard ({grouped.retard.length})</p>
-            {grouped.retard.length ? (
-              <ul className="list">
-                {grouped.retard.map((invoice) => (
-                  <li key={invoice.id}>
-                    {(clientById.get(invoice.clientId) ?? 'Entreprise inconnue')} - {invoice.number} - {formatAmountEur(invoice.amountTtc)}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="panel-meta">Aucune facture</p>
-            )}
-          </article>
-
-          <article className="invoice-status-card">
-            <p className="invoice-status-label neutral">Brouillons ({grouped.brouillons.length})</p>
-            {grouped.brouillons.length ? (
-              <ul className="list">
-                {grouped.brouillons.map((invoice) => (
-                  <li key={invoice.id}>
-                    {(clientById.get(invoice.clientId) ?? 'Entreprise inconnue')} - {invoice.number} - {formatAmountEur(invoice.amountTtc)}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="panel-meta">Aucune facture</p>
-            )}
-            </article>
-          </section>
-
-          <section className="panel invoice-table-panel">
+        <section className="panel doc-workspace-grid">
+          <div className="doc-form-column">
             <div className="panel-head-inline">
-              <h2>Liste des factures</h2>
-              <p className="panel-meta">{sortedInvoices.length} facture(s) affichee(s)</p>
+              <h2>Creer une facture</h2>
+              <span className="status-chip">Preview live</span>
             </div>
-
-            <div className="table-wrap">
-              <table className="data-table invoice-table">
-                <thead>
-                  <tr>
-                    <th>Numero facture</th>
-                    <th>Entreprise</th>
-                    <th>Montant TTC</th>
-                    <th>Date</th>
-                    <th>Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedInvoices.map((invoice) => (
-                    <tr key={invoice.id}>
-                      <td>{invoice.number}</td>
-                      <td>{clientById.get(invoice.clientId) ?? 'Entreprise inconnue'}</td>
-                      <td>{formatCurrency(invoice.amountTtc)}</td>
-                      <td>{formatDate(invoice.dueDate)}</td>
-                      <td>
-                        <StatusBadge label={getInvoiceLabel(invoice.status)} tone={getInvoiceTone(invoice.status)} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      </main>
-
-      {isModalOpen ? (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Nouvelle facture">
-          <section className="panel modal-card">
-            <div className="panel-head-inline">
-              <h2>Nouvelle facture</h2>
-              <button type="button" className="invoice-ghost-btn" onClick={closeModal}>Fermer</button>
-            </div>
-
-            <p className="panel-meta">Le numero de facture est attribue automatiquement a la creation.</p>
 
             <form className="modal-form-grid" onSubmit={handleCreateInvoice}>
               <label>
@@ -311,75 +205,35 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                 <select
                   value={form.clientId}
                   onChange={(event) => setForm((prev) => ({ ...prev, clientId: event.target.value }))}
-                  required={!isCreatingInlineClient}
+                  required
                 >
                   <option value="">Selectionner un client</option>
-                  {clientsList.map((client) => (
+                  {clients.map((client) => (
                     <option key={client.id} value={client.id}>{client.company}</option>
                   ))}
                 </select>
               </label>
 
-              <label className="modal-full-width switch-row">
+              <label>
+                Reference
                 <input
-                  type="checkbox"
-                  checked={isCreatingInlineClient}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    setIsCreatingInlineClient(checked);
-                    setErrorMessage('');
-                    if (checked) {
-                      setForm((prev) => ({ ...prev, clientId: '' }));
-                    } else {
-                      setInlineClient(INITIAL_INLINE_CLIENT);
-                    }
-                  }}
+                  value={form.reference}
+                  onChange={(event) => setForm((prev) => ({ ...prev, reference: event.target.value }))}
+                  placeholder="Mission branding avril"
                 />
-                <span>Client non liste ? Creer une fiche client automatiquement.</span>
               </label>
 
-              {isCreatingInlineClient ? (
-                <>
-                  <label>
-                    Nom / Prenom
-                    <input
-                      value={inlineClient.name}
-                      onChange={(event) => setInlineClient((prev) => ({ ...prev, name: event.target.value }))}
-                      required={isCreatingInlineClient}
-                    />
-                  </label>
-
-                  <label>
-                    Entreprise
-                    <input
-                      value={inlineClient.company}
-                      onChange={(event) => setInlineClient((prev) => ({ ...prev, company: event.target.value }))}
-                      required={isCreatingInlineClient}
-                    />
-                  </label>
-
-                  <label>
-                    Email
-                    <input
-                      type="email"
-                      value={inlineClient.email}
-                      onChange={(event) => setInlineClient((prev) => ({ ...prev, email: event.target.value }))}
-                      required={isCreatingInlineClient}
-                    />
-                  </label>
-
-                  <label>
-                    Ville / Adresse
-                    <input
-                      value={inlineClient.city}
-                      onChange={(event) => setInlineClient((prev) => ({ ...prev, city: event.target.value }))}
-                    />
-                  </label>
-                </>
-              ) : null}
+              <label>
+                Date
+                <input
+                  type="date"
+                  value={form.issueDate}
+                  onChange={(event) => setForm((prev) => ({ ...prev, issueDate: event.target.value }))}
+                />
+              </label>
 
               <label>
-                Date echeance
+                Echeance
                 <input
                   type="date"
                   value={form.dueDate}
@@ -388,15 +242,46 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                 />
               </label>
 
+              <label className="modal-full-width">
+                Designation
+                <input
+                  value={form.lineTitle}
+                  onChange={(event) => setForm((prev) => ({ ...prev, lineTitle: event.target.value }))}
+                  placeholder="Creation identite visuelle"
+                />
+              </label>
+
               <label>
-                Montant HT
+                Quantite
                 <input
                   type="number"
-                  min="0.01"
+                  min="1"
+                  step="1"
+                  value={form.lineQuantity}
+                  onChange={(event) => setForm((prev) => ({ ...prev, lineQuantity: event.target.value }))}
+                />
+              </label>
+
+              <label>
+                Prix unitaire HT
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.lineUnitPrice}
+                  onChange={(event) => setForm((prev) => ({ ...prev, lineUnitPrice: event.target.value }))}
+                />
+              </label>
+
+              <label>
+                Montant HT manuel
+                <input
+                  type="number"
+                  min="0"
                   step="0.01"
                   value={form.amountHt}
                   onChange={(event) => setForm((prev) => ({ ...prev, amountHt: event.target.value }))}
-                  required
+                  placeholder="Laisse vide pour calculer via ligne"
                 />
               </label>
 
@@ -412,7 +297,18 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                 />
               </label>
 
-              <label className="modal-full-width">
+              <label>
+                Remise (%)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.discountRate}
+                  onChange={(event) => setForm((prev) => ({ ...prev, discountRate: event.target.value }))}
+                />
+              </label>
+
+              <label>
                 Statut initial
                 <select
                   value={form.status}
@@ -420,23 +316,127 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                 >
                   <option value="brouillon">Brouillon</option>
                   <option value="envoyee">Envoyee</option>
-                  <option value="payee">Payee</option>
                   <option value="retard">Retard</option>
                 </select>
               </label>
 
               {errorMessage ? <p className="panel-meta modal-full-width">{errorMessage}</p> : null}
+              {successMessage ? <p className="panel-meta modal-full-width">{successMessage}</p> : null}
 
-              <div className="panel-actions split modal-full-width">
-                <button type="button" className="invoice-ghost-btn" onClick={closeModal}>Annuler</button>
-                <button type="submit" className="header-cta solid" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creation...' : 'Creer la facture'}
-                </button>
+              <div className="doc-sticky-footer modal-full-width">
+                <div className="totals-rows">
+                  <p>Total HT: {formatCurrency(totalHt)}</p>
+                  <p>TVA: {formatCurrency(totalTax)}</p>
+                  <p className="total-ttc">Total TTC: {formatCurrency(totalTtc)}</p>
+                </div>
+                <div className="panel-actions split">
+                  <button type="button" className="invoice-ghost-btn">Generer PDF</button>
+                  <button type="button" className="invoice-ghost-btn">Envoyer par email</button>
+                  <button type="submit" className="header-cta solid" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creation...' : 'Creer facture'}
+                  </button>
+                </div>
               </div>
             </form>
-          </section>
-        </div>
-      ) : null}
-    </>
+          </div>
+
+          <aside className="doc-preview-column">
+            <div className="pdf-preview-sheet">
+              <p className="eyebrow">Apercu facture A4</p>
+              <h3>Facture {form.reference || 'nouvelle'}</h3>
+              <p className="panel-meta">Client: {clientById.get(form.clientId) ?? 'Aucun client'}</p>
+              <p className="panel-meta">Date: {form.issueDate || '-'}</p>
+              <p className="panel-meta">Echeance: {form.dueDate || '-'}</p>
+
+              <hr />
+
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Designation</th>
+                    <th>Qt</th>
+                    <th>PU</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{form.lineTitle || 'Prestation freelance'}</td>
+                    <td>{form.lineQuantity || '1'}</td>
+                    <td>{formatCurrency(Number(form.lineUnitPrice || 0))}</td>
+                    <td>{formatCurrency(lineTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="invoice-preview-totals">
+                <p>HT: {formatCurrency(totalHt)}</p>
+                <p>TVA ({taxRate}%): {formatCurrency(totalTax)}</p>
+                <p><strong>TTC: {formatCurrency(totalTtc)}</strong></p>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section className="panel invoice-status-panel">
+          <h2>Suivi & rappels intelligents</h2>
+          <article className="invoice-status-card">
+            <p className="invoice-status-label ok">Payees ({grouped.payees.length})</p>
+            <p className="panel-meta">Rappel auto desactive sur factures payees.</p>
+          </article>
+          <article className="invoice-status-card">
+            <p className="invoice-status-label warn">En attente ({grouped.attente.length})</p>
+            <p className="panel-meta">Planification recommandee: J-3 puis J+3.</p>
+          </article>
+          <article className="invoice-status-card">
+            <p className="invoice-status-label danger">En retard ({grouped.retard.length})</p>
+            <p className="panel-meta">Escalade douce: J+3 puis J+10.</p>
+          </article>
+        </section>
+
+        <section className="panel invoice-table-panel">
+          <div className="panel-head-inline">
+            <h2>Table factures</h2>
+            <p className="panel-meta">{sortedInvoices.length} facture(s)</p>
+          </div>
+
+          <div className="table-wrap">
+            <table className="data-table invoice-table">
+              <thead>
+                <tr>
+                  <th>Numero</th>
+                  <th>Client</th>
+                  <th>Montant TTC</th>
+                  <th>Echeance</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedInvoices.map((invoice) => (
+                  <tr key={invoice.id}>
+                    <td>{invoice.number}</td>
+                    <td>{clientById.get(invoice.clientId) ?? 'Entreprise inconnue'}</td>
+                    <td>{formatAmountEur(invoice.amountTtc)}</td>
+                    <td>{formatDate(invoice.dueDate)}</td>
+                    <td>
+                      <StatusBadge label={getInvoiceLabel(invoice.status)} tone={getInvoiceTone(invoice.status)} />
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <button type="button" className="invoice-ghost-btn">Relancer</button>
+                        <button type="button" className="invoice-ghost-btn" onClick={() => markPaid(invoice.id)}>
+                          Marquer payee
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

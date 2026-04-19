@@ -59,6 +59,11 @@ function isDatabaseUnavailable(error: unknown): boolean {
   );
 }
 
+function logDatabaseFallback(operation: string, userId: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[mock-db] fallback memory used for ${operation} (user=${userId}) - ${message}`);
+}
+
 function toClientStatus(value: PrismaClientStatus): Client['status'] {
   return value === 'ACTIF' ? 'actif' : 'inactif';
 }
@@ -168,6 +173,7 @@ export async function getClients(userId: string): Promise<Client[]> {
       name: item.name,
       email: item.email,
       company: item.company,
+      kbis: item.vatNumber ?? undefined,
       status: toClientStatus(item.status),
       city: item.city ?? 'Non renseignee',
     }));
@@ -175,6 +181,8 @@ export async function getClients(userId: string): Promise<Client[]> {
     if (!isDatabaseUnavailable(error)) {
       throw error;
     }
+
+    logDatabaseFallback('getClients', userId, error);
 
     return [...getMemoryStore(userId).clients];
   }
@@ -188,6 +196,7 @@ export async function createClient(userId: string, input: CreateClientInput): Pr
         name: input.name,
         email: input.email,
         company: input.company,
+        vatNumber: input.kbis,
         city: input.city,
         status: fromClientStatus(input.status),
       },
@@ -198,6 +207,7 @@ export async function createClient(userId: string, input: CreateClientInput): Pr
       name: created.name,
       email: created.email,
       company: created.company,
+      kbis: created.vatNumber ?? undefined,
       city: created.city ?? 'Non renseignee',
       status: toClientStatus(created.status),
     };
@@ -206,11 +216,14 @@ export async function createClient(userId: string, input: CreateClientInput): Pr
       throw error;
     }
 
+    logDatabaseFallback('createClient', userId, error);
+
     const created: Client = {
       id: generateId('client'),
       name: input.name,
       email: input.email,
       company: input.company,
+      kbis: input.kbis,
       city: input.city,
       status: input.status,
     };
@@ -243,6 +256,8 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
       throw error;
     }
 
+    logDatabaseFallback('getInvoices', userId, error);
+
     return [...getMemoryStore(userId).invoices];
   }
 }
@@ -274,11 +289,15 @@ export async function getInvoiceById(userId: string, id: string): Promise<Invoic
       throw error;
     }
 
+    logDatabaseFallback('getInvoiceById', userId, error);
+
     return getMemoryStore(userId).invoices.find((item) => item.id === id) ?? null;
   }
 }
 
 export async function createInvoice(userId: string, input: CreateInvoiceInput): Promise<Invoice> {
+  const initialStatus = input.status === 'payee' ? 'brouillon' : input.status;
+
   try {
     const number = await generateNextInvoiceNumber(userId);
     const totals = computeTotals(input.amountHt, input.taxRate);
@@ -293,7 +312,7 @@ export async function createInvoice(userId: string, input: CreateInvoiceInput): 
         taxRate: totals.taxRate,
         amountTax: totals.amountTax,
         amountTtc: totals.amountTtc,
-        status: fromInvoiceStatus(input.status ?? 'brouillon'),
+        status: fromInvoiceStatus(initialStatus ?? 'brouillon'),
       },
     });
 
@@ -311,6 +330,8 @@ export async function createInvoice(userId: string, input: CreateInvoiceInput): 
       throw error;
     }
 
+    logDatabaseFallback('createInvoice', userId, error);
+
     const store = getMemoryStore(userId);
     const totals = computeTotals(input.amountHt, input.taxRate);
     const year = new Date().getFullYear();
@@ -324,7 +345,7 @@ export async function createInvoice(userId: string, input: CreateInvoiceInput): 
       amountHt: totals.amountHt,
       amountTtc: totals.amountTtc,
       dueDate: input.dueDate,
-      status: input.status ?? 'brouillon',
+      status: initialStatus ?? 'brouillon',
     };
 
     store.invoices.unshift(created);
@@ -379,6 +400,8 @@ export async function markInvoicePaid(userId: string, id: string): Promise<Invoi
       throw error;
     }
 
+    logDatabaseFallback('markInvoicePaid', userId, error);
+
     const store = getMemoryStore(userId);
     const invoice = store.invoices.find((item) => item.id === id);
     if (!invoice) {
@@ -414,6 +437,8 @@ export async function getContracts(userId: string): Promise<Contract[]> {
       throw error;
     }
 
+    logDatabaseFallback('getContracts', userId, error);
+
     return [...getMemoryStore(userId).contracts];
   }
 }
@@ -445,6 +470,8 @@ export async function createContract(userId: string, input: CreateContractInput)
     if (!isDatabaseUnavailable(error)) {
       throw error;
     }
+
+    logDatabaseFallback('createContract', userId, error);
 
     const created: Contract = {
       id: generateId('contract'),

@@ -1,6 +1,12 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
+const LOCAL_USER_ID = 'local-user';
+
+export function isLocalDevAuthEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.LOCAL_DEV_AUTH === 'true';
+}
+
 function isDatabaseUnavailable(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
@@ -14,20 +20,41 @@ function isDatabaseUnavailable(error: unknown): boolean {
 }
 
 export async function requireClerkUserId(): Promise<string> {
+  if (isLocalDevAuthEnabled()) {
+    return LOCAL_USER_ID;
+  }
+
   const { userId } = await auth();
   if (!userId) {
     throw new Error('UNAUTHORIZED');
   }
+
+  return userId;
+}
+
+export async function requireClerkUserIdOrRedirect(): Promise<string> {
+  if (isLocalDevAuthEnabled()) {
+    return LOCAL_USER_ID;
+  }
+
+  const { userId, redirectToSignIn } = await auth();
+  if (!userId) {
+    return redirectToSignIn({ returnBackUrl: '/dashboard' }) as never;
+  }
+
   return userId;
 }
 
 export async function ensureAppUser(clerkUserId: string): Promise<string> {
-  const clerkProfile = await currentUser();
-  const email = clerkProfile?.emailAddresses[0]?.emailAddress;
-  const name =
-    [clerkProfile?.firstName, clerkProfile?.lastName].filter(Boolean).join(' ') ||
-    clerkProfile?.username ||
-    null;
+  const clerkProfile = isLocalDevAuthEnabled() ? null : await currentUser();
+  const email = isLocalDevAuthEnabled()
+    ? 'local@site-oaf.app'
+    : clerkProfile?.emailAddresses[0]?.emailAddress ?? null;
+  const name = isLocalDevAuthEnabled()
+    ? 'Local User'
+    : [clerkProfile?.firstName, clerkProfile?.lastName].filter(Boolean).join(' ') ||
+      clerkProfile?.username ||
+      null;
 
   try {
     const user = await prisma.user.upsert({

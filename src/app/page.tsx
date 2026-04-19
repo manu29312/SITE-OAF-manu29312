@@ -1,9 +1,11 @@
 import Link from 'next/link';
-import { Show, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { homePageContent } from '@/lib/homepage-content';
+import { isLocalDevAuthEnabled } from '@/lib/auth-user';
 
 export default function HomePage() {
+  const localAuthEnabled = isLocalDevAuthEnabled();
+
   return (
     <main className="app-shell">
       <section className="dashboard-topbar panel">
@@ -11,9 +13,7 @@ export default function HomePage() {
           <span className="brand-dot" aria-hidden="true" />
           <h1>OAF Admin</h1>
         </div>
-        <Show when="signed-in">
-          <Link className="header-cta" href="/dashboard">Vue dashboard detaillee</Link>
-        </Show>
+        <Link className="header-cta" href="/dashboard">Vue dashboard detaillee</Link>
       </section>
 
       <nav className="dashboard-tabs panel" aria-label="Navigation principale">
@@ -30,17 +30,12 @@ export default function HomePage() {
           <p className="panel-meta">{homePageContent.hero.subtitle}</p>
 
           <div className="panel-actions split">
-            <Show when="signed-out">
-              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-                <button type="button" className="header-cta solid">Se connecter</button>
-              </SignInButton>
-              <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
-                <button type="button" className="header-cta">Creer un compte</button>
-              </SignUpButton>
-            </Show>
-            <Show when="signed-in">
-              <p className="panel-meta">Connecte: tu peux modifier cette page et ajouter tes propres sections.</p>
-            </Show>
+            <Link className="header-cta solid" href="/dashboard">Acceder au dashboard</Link>
+            <p className="panel-meta">
+              {localAuthEnabled
+                ? 'Mode local actif: authentification externe desactivee.'
+                : 'Authentification Clerk activee.'}
+            </p>
           </div>
         </section>
 
@@ -52,20 +47,6 @@ export default function HomePage() {
               <p className="panel-meta">{card.detail}</p>
             </article>
           ))}
-        </section>
-
-        <section className="panel">
-          <div className="panel-head-inline">
-            <h2>Actions rapides</h2>
-            <span className="status-chip">Personnalisable</span>
-          </div>
-          <div className="panel-actions split" style={{ flexWrap: 'wrap' }}>
-            {homePageContent.quickActions.map((action) => (
-              <Link key={action.href} href={action.href} className="header-cta solid">
-                {action.label}
-              </Link>
-            ))}
-          </div>
         </section>
 
         <section className="panel">
