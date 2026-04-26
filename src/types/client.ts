@@ -6,6 +6,7 @@ export type Client = {
   email: string;
   company: string;
   kbis?: string;
+  createdAt?: string;
   status: ClientStatus;
   city: string;
 };

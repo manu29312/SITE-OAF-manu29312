@@ -174,6 +174,7 @@ export async function getClients(userId: string): Promise<Client[]> {
       email: item.email,
       company: item.company,
       kbis: item.vatNumber ?? undefined,
+      createdAt: item.createdAt.toISOString(),
       status: toClientStatus(item.status),
       city: item.city ?? 'Non renseignee',
     }));
@@ -208,6 +209,7 @@ export async function createClient(userId: string, input: CreateClientInput): Pr
       email: created.email,
       company: created.company,
       kbis: created.vatNumber ?? undefined,
+      createdAt: created.createdAt.toISOString(),
       city: created.city ?? 'Non renseignee',
       status: toClientStatus(created.status),
     };
@@ -224,6 +226,7 @@ export async function createClient(userId: string, input: CreateClientInput): Pr
       email: input.email,
       company: input.company,
       kbis: input.kbis,
+      createdAt: new Date().toISOString(),
       city: input.city,
       status: input.status,
     };

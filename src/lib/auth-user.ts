@@ -1,7 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 
-const LOCAL_USER_ID = 'local-user';
+const LOCAL_CLERK_USER_ID = process.env.LOCAL_DEV_CLERK_ID ?? 'seed-user-clerk-id';
 
 export function isLocalDevAuthEnabled(): boolean {
   return process.env.NODE_ENV !== 'production' && process.env.LOCAL_DEV_AUTH === 'true';
@@ -21,7 +21,7 @@ function isDatabaseUnavailable(error: unknown): boolean {
 
 export async function requireClerkUserId(): Promise<string> {
   if (isLocalDevAuthEnabled()) {
-    return LOCAL_USER_ID;
+    return LOCAL_CLERK_USER_ID;
   }
 
   const { userId } = await auth();
@@ -34,7 +34,7 @@ export async function requireClerkUserId(): Promise<string> {
 
 export async function requireClerkUserIdOrRedirect(): Promise<string> {
   if (isLocalDevAuthEnabled()) {
-    return LOCAL_USER_ID;
+    return LOCAL_CLERK_USER_ID;
   }
 
   const { userId, redirectToSignIn } = await auth();

@@ -9,10 +9,6 @@ type RevenuePoint = {
   value: number;
 };
 
-function formatDayLabel(dateValue: string): string {
-  return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short' }).format(new Date(dateValue));
-}
-
 function buildRevenueSeries(invoices: Array<{ dueDate: string; amountTtc: number }>): RevenuePoint[] {
   const now = new Date();
   const points: RevenuePoint[] = [];
@@ -81,52 +77,18 @@ export default async function DashboardPage() {
       return dueDate.getMonth() === now.getMonth() && dueDate.getFullYear() === now.getFullYear();
     })
     .reduce((sum, invoice) => sum + invoice.amountTtc, 0);
-  const waitingInvoices = invoices.filter((invoice) => invoice.status === 'brouillon' || invoice.status === 'envoyee').length;
   const overdueCount = invoices.filter((invoice) => invoice.status === 'retard').length;
   const pendingAmount = invoices
     .filter((invoice) => invoice.status === 'envoyee' || invoice.status === 'retard')
     .reduce((sum, invoice) => sum + invoice.amountTtc, 0);
   const signedRate = contracts.length ? Math.round((contracts.filter((item) => item.status === 'actif').length / contracts.length) * 100) : 0;
-  const conversionMomentum = contracts.length ? Math.round((waitingInvoices / Math.max(contracts.length, 1)) * 100) : 0;
   const profileCompletion = Math.min(100, 25 + (clients.length > 0 ? 25 : 0) + (invoices.length > 0 ? 25 : 0) + (contracts.length > 0 ? 25 : 0));
 
-  const recentInvoices = [...invoices]
-    .sort((left, right) => new Date(right.dueDate).getTime() - new Date(left.dueDate).getTime())
-    .slice(0, 4);
-  const dueSoon = invoices.filter((invoice) => {
-    if (invoice.status === 'payee') {
-      return false;
-    }
-
-    const diff = new Date(invoice.dueDate).getTime() - now.getTime();
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-    return days >= 0 && days <= 7;
-  });
   const revenueSeries = buildRevenueSeries(invoices);
   const chartValues = revenueSeries.map((item) => item.value);
   const chartPath = buildChartPath(chartValues, 690, 180);
   const maxChartValue = Math.max(...chartValues, 1);
   const chartArea = chartPath ? `${chartPath} L 690 180 L 0 180 Z` : '';
-
-  const timelineEntries = recentInvoices.map((invoice) => {
-    if (invoice.status === 'payee') {
-      return `Facture ${invoice.number} payee (${formatDayLabel(invoice.dueDate)}).`;
-    }
-
-    if (invoice.status === 'retard') {
-      return `Facture ${invoice.number} en retard: relance prioritaire.`;
-    }
-
-    if (invoice.status === 'envoyee') {
-      return `Facture ${invoice.number} envoyee, suivi actif jusqu au paiement.`;
-    }
-
-    return `Facture ${invoice.number} en brouillon, finalisation recommandee.`;
-  });
-
-  const alertsSummary = dueSoon.length
-    ? `${dueSoon.length} facture(s) arrivent a echeance sous 7 jours.`
-    : 'Aucune facture proche echeance cette semaine.';
 
   return (
     <main className="app-shell">
@@ -165,6 +127,12 @@ export default async function DashboardPage() {
               </div>
               <strong>{profileCompletion}%</strong>
             </div>
+            <p className="panel-meta">
+              {clients.length} client(s), {contracts.length} contrat(s), {invoices.length} facture(s) dans ton espace.
+            </p>
+            <p className="panel-meta">
+              Les rappels sont geres dans les parametres de l entreprise.
+            </p>
           </div>
           <Link href="/parametres" className="header-cta settings-pill">Completer profil</Link>
         </section>
@@ -184,6 +152,49 @@ export default async function DashboardPage() {
             <p className="panel-meta">Cumule des factures dues ce mois-ci.</p>
           </article>
 
+          <section className="panel chart-panel metric-chart-panel">
+            <div className="chart-head">
+              <div>
+                <h2>Evolution du chiffre d affaires</h2>
+                <p className="panel-meta">Vue annuelle simplifiee pour pilotage freelance</p>
+              </div>
+
+              <div className="chart-filters">
+                <select aria-label="Periode">
+                  <option>Annuel</option>
+                </select>
+                <select aria-label="Annee">
+                  <option>2026</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="chart-surface" role="img" aria-label="Evolution du chiffre d affaires de 2023 a 2026">
+              <svg viewBox="0 0 740 260" preserveAspectRatio="none">
+                <line x1="25" y1="35" x2="715" y2="35" className="grid-line" />
+                <line x1="25" y1="95" x2="715" y2="95" className="grid-line" />
+                <line x1="25" y1="155" x2="715" y2="155" className="grid-line" />
+                <line x1="25" y1="215" x2="715" y2="215" className="grid-line" />
+
+                {chartPath ? <path d={chartPath} className="chart-line" transform="translate(25, 35)" /> : null}
+                {chartArea ? <path d={chartArea} className="chart-fill" transform="translate(25, 35)" /> : null}
+
+                {chartValues.map((value, index) => {
+                  const step = chartValues.length > 1 ? 690 / (chartValues.length - 1) : 0;
+                  const x = 25 + index * step;
+                  const y = 35 + (180 - (value / maxChartValue) * 180);
+                  return <circle key={`${value}-${index}`} cx={x} cy={y} r="5" className="chart-dot" />;
+                })}
+              </svg>
+            </div>
+
+            <div className="chart-years" aria-hidden="true">
+              {revenueSeries.map((point) => (
+                <span key={point.label}>{point.label}</span>
+              ))}
+            </div>
+          </section>
+
           <article className="panel metric-card">
             <p className="metric-label">Encours a collecter</p>
             <p className="metric-value">{formatCurrency(pendingAmount)}</p>
@@ -199,163 +210,8 @@ export default async function DashboardPage() {
             <p className="metric-label">Taux de signature</p>
             <p className="metric-value">{signedRate}%</p>
           </article>
-
-          <article className="panel metric-card">
-            <p className="metric-label">Momentum pipeline</p>
-            <p className="metric-value">{conversionMomentum}%</p>
-            <p className="panel-meta">Volume factures en attente vs contrats.</p>
-          </article>
         </section>
 
-        <section className="panel">
-          <h2>Timeline suivi & rappels</h2>
-          {timelineEntries.length ? (
-            <ul className="list">
-              {timelineEntries.map((entry) => (
-                <li key={entry}>{entry}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="panel-empty">Aucune activite facture pour le moment. Cree ta premiere facture pour demarrer la timeline.</p>
-          )}
-        </section>
-
-        <section className="panel">
-          <div className="panel-head-inline">
-            <h2>Rappels intelligents</h2>
-            <span className="status-chip">J-3, J+3, J+10</span>
-          </div>
-          <p className="panel-meta">{alertsSummary}</p>
-          <div className="checkbox-row" role="group" aria-label="Regles de relance">
-            <label><input type="checkbox" checked={dueSoon.length > 0} readOnly /> J-3 avant echeance</label>
-            <label><input type="checkbox" checked={waitingInvoices > 0} readOnly /> J+3 apres echeance</label>
-            <label><input type="checkbox" checked={overdueCount > 0} readOnly /> J+10 apres echeance</label>
-          </div>
-
-          <div className="panel-actions split">
-            <button type="button" className="header-cta solid">Relance manuelle</button>
-            <p className="panel-meta">{waitingInvoices > 0 ? 'Planifier un rappel auto personnalise' : 'Aucune relance urgente a planifier.'}</p>
-          </div>
-        </section>
-
-        <section className="panel chart-panel">
-          <div className="chart-head">
-            <div>
-              <h2>Evolution du chiffre d affaires</h2>
-              <p className="panel-meta">Vue annuelle simplifiee pour pilotage freelance</p>
-            </div>
-
-            <div className="chart-filters">
-              <select aria-label="Periode">
-                <option>Annuel</option>
-              </select>
-              <select aria-label="Annee">
-                <option>2026</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="chart-surface" role="img" aria-label="Evolution du chiffre d affaires de 2023 a 2026">
-            <svg viewBox="0 0 740 260" preserveAspectRatio="none">
-              <line x1="25" y1="35" x2="715" y2="35" className="grid-line" />
-              <line x1="25" y1="95" x2="715" y2="95" className="grid-line" />
-              <line x1="25" y1="155" x2="715" y2="155" className="grid-line" />
-              <line x1="25" y1="215" x2="715" y2="215" className="grid-line" />
-
-              {chartPath ? <path d={chartPath} className="chart-line" transform="translate(25, 35)" /> : null}
-              {chartArea ? <path d={chartArea} className="chart-fill" transform="translate(25, 35)" /> : null}
-
-              {chartValues.map((value, index) => {
-                const step = chartValues.length > 1 ? 690 / (chartValues.length - 1) : 0;
-                const x = 25 + index * step;
-                const y = 35 + (180 - (value / maxChartValue) * 180);
-                return <circle key={`${value}-${index}`} cx={x} cy={y} r="5" className="chart-dot" />;
-              })}
-            </svg>
-          </div>
-
-          <div className="chart-years" aria-hidden="true">
-            {revenueSeries.map((point) => (
-              <span key={point.label}>{point.label}</span>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head-inline">
-            <h2>Suivi factures</h2>
-            <Link href="/factures" className="header-cta">Voir tout</Link>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Facture</th>
-                  <th>Client</th>
-                  <th>Montant</th>
-                  <th>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.length ? (
-                  invoices.slice(0, 5).map((invoice) => (
-                    <tr key={invoice.id}>
-                      <td>{invoice.number}</td>
-                      <td>{clients.find((client) => client.id === invoice.clientId)?.company ?? 'Client inconnu'}</td>
-                      <td>{formatCurrency(invoice.amountTtc)}</td>
-                      <td>{invoice.status}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="table-empty">Aucune facture enregistree pour le moment.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-head-inline">
-            <h2>Suivi contrats</h2>
-            <Link href="/contrats" className="header-cta">Voir tout</Link>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Contrat</th>
-                  <th>Client</th>
-                  <th>Type</th>
-                  <th>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contracts.length ? (
-                  contracts.slice(0, 5).map((contract) => (
-                    <tr key={contract.id}>
-                      <td>{contract.title}</td>
-                      <td>{clients.find((client) => client.id === contract.clientId)?.company ?? 'Client inconnu'}</td>
-                      <td>Prestation</td>
-                      <td>{contract.status}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="table-empty">Aucun contrat disponible pour le moment.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="panel dashboard-footer-note">
-          <p>
-            {clients.length} client(s), {contracts.length} contrat(s), {invoices.length} facture(s) dans ton espace.
-          </p>
-        </section>
       </div>
     </main>
   );

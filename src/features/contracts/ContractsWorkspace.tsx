@@ -73,10 +73,40 @@ function toEuros(value: string): number {
   return parsed;
 }
 
+const PREDEFINED_CLAUSES: Array<{ id: string; label: string; text: string }> = [
+  {
+    id: 'paiement',
+    label: 'Paiement (30 jours)',
+    text: 'Paiement: acompte de 40% a la commande puis solde a 30 jours fin de mois.',
+  },
+  {
+    id: 'retard',
+    label: 'Retard de paiement',
+    text: 'Retard: application des penalites legales de retard et indemnites forfaitaires de recouvrement.',
+  },
+  {
+    id: 'revision',
+    label: 'Revisions limitees',
+    text: 'Revision: deux allers-retours de corrections inclus, au-dela une facturation additionnelle s applique.',
+  },
+  {
+    id: 'resiliation',
+    label: 'Resiliation anticipee',
+    text: 'Resiliation: chaque partie peut resilier avec un preavis de 15 jours, les travaux realises restant dus.',
+  },
+  {
+    id: 'confidentialite',
+    label: 'Confidentialite renforcee',
+    text: 'Confidentialite: les parties s engagent a ne divulguer aucune information sensible sans accord ecrit prealable.',
+  },
+];
+
 export function ContractsWorkspace({ initialContracts, clients }: ContractsWorkspaceProps) {
   const [contracts, setContracts] = useState<Contract[]>(initialContracts);
   const [form, setForm] = useState<ContractForm>(INITIAL_FORM);
   const [activeTab, setActiveTab] = useState<'details' | 'clauses' | 'signatures'>('details');
+  const [selectedClauseTemplate, setSelectedClauseTemplate] = useState<string>('');
+  const [customClause, setCustomClause] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -130,6 +160,50 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
     setForm((prev) => ({ ...prev, clausesText: baseClauses.join('\n') }));
     setErrorMessage('');
     setSuccessMessage('Clauses suggerees. Tu peux les modifier avant generation.');
+  };
+
+  const appendClauseLine = (line: string) => {
+    const clause = line.trim();
+    if (!clause) {
+      setErrorMessage('La clause est vide.');
+      return;
+    }
+
+    setForm((prev) => {
+      const current = prev.clausesText.trim();
+      const lines = current ? current.split('\n').map((item) => item.trim()) : [];
+      if (lines.includes(clause)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        clausesText: current ? `${current}\n${clause}` : clause,
+      };
+    });
+
+    setErrorMessage('');
+    setSuccessMessage('Clause ajoutee a la liste editable.');
+  };
+
+  const handleAddSelectedClause = () => {
+    if (!selectedClauseTemplate) {
+      setErrorMessage('Selectionne une clause predefinie ou Autre.');
+      return;
+    }
+
+    if (selectedClauseTemplate === 'other') {
+      appendClauseLine(customClause);
+      return;
+    }
+
+    const selected = PREDEFINED_CLAUSES.find((item) => item.id === selectedClauseTemplate);
+    if (!selected) {
+      setErrorMessage('La clause selectionnee est introuvable.');
+      return;
+    }
+
+    appendClauseLine(selected.text);
   };
 
   const handleCreateContract = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -190,15 +264,38 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
         <section className="panel page-context-panel">
           <div className="panel-head-inline">
             <h2>Espace Contrats</h2>
-            <span className="status-chip">Clauses + signatures</span>
+            <p className="panel-meta">{contracts.length} contrat(s)</p>
           </div>
-          <p className="panel-meta">
-            Construit tes contrats avec clauses adaptables et previsualisation live avant signature ou export.
-          </p>
-          <div className="context-pills">
-            <span className="context-pill">Total: {contracts.length}</span>
-            <span className="context-pill">Taux signature: {signatureRate}%</span>
-            <span className="context-pill">Montant: {formatCurrency(totalAmount)}</span>
+
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Contrat</th>
+                  <th>Client</th>
+                  <th>Periode</th>
+                  <th>Montant</th>
+                  <th>Statut</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contracts.map((contract) => (
+                  <tr key={contract.id}>
+                    <td>{contract.title}</td>
+                    <td>{clientById.get(contract.clientId) ?? 'Client inconnu'}</td>
+                    <td>{formatDate(contract.startDate)} - {formatDate(contract.endDate)}</td>
+                    <td>{formatCurrency(contract.amount)}</td>
+                    <td><StatusBadge label={getContractLabel(contract.status)} tone={getContractTone(contract.status)} /></td>
+                    <td>
+                      <Link className="header-cta" href={`/factures?clientId=${contract.clientId}`}>
+                        Creer facture liee
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -208,61 +305,112 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
             <p className="metric-value">{contracts.length}</p>
           </article>
           <article className="panel metric-card">
-            <p className="metric-label">Montant cumule</p>
+            <p className="metric-label">Montant du mois</p>
             <p className="metric-value">{formatCurrency(totalAmount)}</p>
           </article>
-          <article className="panel metric-card metric-card-accent">
-            <p className="metric-label">Taux de signature</p>
-            <p className="metric-value">{signatureRate}%</p>
-          </article>
-        </section>
+            </section>
 
-        <section className="panel doc-workspace-grid">
-          <div className="doc-form-column">
-            <div className="panel-head-inline">
-              <h2>Generer un contrat</h2>
-              <span className="status-chip">1 ecran = 1 doc</span>
+        <section className="panel contract-studio-panel">
+          <div className="panel-head-inline">
+            <div>
+              <h2>Generer le contrat</h2>
+                          </div>
+          </div>
+<div className="contract-preview-summary">
+                <div>
+                  <p className="metric-label">Contrat</p>
+                  <p className="metric-value contract-preview-title">{form.title || 'Contrat sans titre'}</p>
+                </div>
+                <div className="contract-preview-pills">
+                  <span className="context-pill">{clientById.get(form.clientId) ?? 'Aucun client'}</span>
+                  <span className="context-pill">{form.contractType}</span>
+                  <span className="context-pill">{formatCurrency(toEuros(form.amount))}</span>
+                </div>
+              </div>
+          <div className="contract-studio-grid">
+            <div className="pdf-preview-sheet contract-studio-preview">
+              <p className="eyebrow">Apercu contrat</p>
+              <div className="preview-quick-grid">
+                <label>
+                  Titre
+                  <input
+                    value={form.title}
+                    onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                    placeholder="Ex: Contrat maintenance site"
+                  />
+                </label>
+                          <label>
+                  Client
+                  <select
+                    value={form.clientId}
+                    onChange={(event) => setForm((prev) => ({ ...prev, clientId: event.target.value }))}
+                  >
+                    <option value="">Selectionner un client</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>{client.company}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Type
+                  <select
+                    value={form.contractType}
+                    onChange={(event) => setForm((prev) => ({ ...prev, contractType: event.target.value }))}
+                  >
+                    <option value="prestation">Prestation</option>
+                    <option value="cession-droits">Cession droits</option>
+                    <option value="nda">NDA</option>
+                    <option value="regie">Regie</option>
+                  </select>
+                </label>
+                <label>
+                  Date debut
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Date fin
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Montant
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={form.amount}
+                    onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))}
+                    placeholder="0.00"
+                  />
+                </label>
+              </div>
+              <hr />
             </div>
 
-            <div className="doc-tabs" role="tablist" aria-label="Etapes contrat">
-              <button type="button" className={`doc-tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
-                Details
-              </button>
-              <button type="button" className={`doc-tab-btn ${activeTab === 'clauses' ? 'active' : ''}`} onClick={() => setActiveTab('clauses')}>
-                Clauses
-              </button>
-              <button type="button" className={`doc-tab-btn ${activeTab === 'signatures' ? 'active' : ''}`} onClick={() => setActiveTab('signatures')}>
-                Signatures
-              </button>
-            </div>
+            <div className="doc-form-column contract-studio-form">
+              <div className="doc-tabs" role="tablist" aria-label="Etapes contrat">
+                <button type="button" className={`doc-tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
+                  Details
+                </button>
+                <button type="button" className={`doc-tab-btn ${activeTab === 'clauses' ? 'active' : ''}`} onClick={() => setActiveTab('clauses')}>
+                  Clauses
+                </button>
+                <button type="button" className={`doc-tab-btn ${activeTab === 'signatures' ? 'active' : ''}`} onClick={() => setActiveTab('signatures')}>
+                  Signatures
+                </button>
+              </div>
 
-            <form className="modal-form-grid" onSubmit={handleCreateContract}>
+              <form className="modal-form-grid" onSubmit={handleCreateContract}>
               {activeTab === 'details' ? (
                 <>
-                  <label>
-                    Client
-                    <select value={form.clientId} onChange={(event) => setForm((prev) => ({ ...prev, clientId: event.target.value }))} required>
-                      <option value="">Selectionner un client</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>{client.company}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Type de contrat
-                    <select value={form.contractType} onChange={(event) => setForm((prev) => ({ ...prev, contractType: event.target.value }))}>
-                      <option value="prestation">Prestation</option>
-                      <option value="cession-droits">Cession droits</option>
-                      <option value="nda">NDA</option>
-                      <option value="regie">Regie</option>
-                    </select>
-                  </label>
-
-                  <label className="modal-full-width">
-                    Titre
-                    <input value={form.title} onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))} required />
-                  </label>
+              
 
                   <label className="modal-full-width">
                     Contexte mission
@@ -275,12 +423,12 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
                   </label>
 
                   <label>
-                    Tarifs / modalites
+                    Tarifs 
                     <input value={form.pricingDetails} onChange={(event) => setForm((prev) => ({ ...prev, pricingDetails: event.target.value }))} />
                   </label>
 
                   <label>
-                    Delais
+                    Délais
                     <input value={form.deadlines} onChange={(event) => setForm((prev) => ({ ...prev, deadlines: event.target.value }))} />
                   </label>
 
@@ -289,36 +437,8 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
                     <input value={form.workLocation} onChange={(event) => setForm((prev) => ({ ...prev, workLocation: event.target.value }))} />
                   </label>
 
-                  <label>
-                    Propriete intellectuelle
-                    <select value={form.ipOption} onChange={(event) => setForm((prev) => ({ ...prev, ipOption: event.target.value }))}>
-                      <option value="cession-partielle">Cession partielle</option>
-                      <option value="cession-complete">Cession complete</option>
-                      <option value="licence">Licence d usage</option>
-                    </select>
-                  </label>
-
-                  <label>
-                    Droit applicable
-                    <input value={form.legalCountry} onChange={(event) => setForm((prev) => ({ ...prev, legalCountry: event.target.value }))} />
-                  </label>
-
-                  <label>
-                    Date debut
-                    <input type="date" value={form.startDate} onChange={(event) => setForm((prev) => ({ ...prev, startDate: event.target.value }))} required />
-                  </label>
-
-                  <label>
-                    Date fin
-                    <input type="date" value={form.endDate} onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))} required />
-                  </label>
-
-                  <label>
-                    Montant
-                    <input type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))} required />
-                  </label>
-
-                  <label>
+                  
+                              <label>
                     Statut
                     <select value={form.status} onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as ContractStatus }))}>
                       <option value="actif">Actif</option>
@@ -333,15 +453,44 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
                       checked={form.confidentialityEnabled}
                       onChange={(event) => setForm((prev) => ({ ...prev, confidentialityEnabled: event.target.checked }))}
                     />
-                    <span>Activer la clause de confidentialite</span>
+                    <span>Clause de confidentialite</span>
                   </label>
                 </>
               ) : null}
 
               {activeTab === 'clauses' ? (
                 <>
+                  <label>
+                    Bibliotheque de clauses
+                    <select value={selectedClauseTemplate} onChange={(event) => setSelectedClauseTemplate(event.target.value)}>
+                      <option value="">Selectionner une clause</option>
+                      {PREDEFINED_CLAUSES.map((clause) => (
+                        <option key={clause.id} value={clause.id}>{clause.label}</option>
+                      ))}
+                      <option value="other">Autre (saisie libre)</option>
+                    </select>
+                  </label>
+
+                  {selectedClauseTemplate === 'other' ? (
+                    <label className="modal-full-width">
+                      Clause specifique (Autre)
+                      <textarea
+                        rows={3}
+                        value={customClause}
+                        onChange={(event) => setCustomClause(event.target.value)}
+                        placeholder="Ex: Le client valide chaque livrable sous 5 jours ou le livrable est considere accepte."
+                      />
+                    </label>
+                  ) : null}
+
+                  <div className="panel-actions split modal-full-width">
+                    <button type="button" className="invoice-ghost-btn" onClick={handleAddSelectedClause}>
+                      Ajouter un clause 
+                    </button>
+                  </div>
+
                   <label className="modal-full-width">
-                    Section IA - Resume mission
+                    Section IA 
                     <textarea
                       rows={4}
                       value={form.aiMissionSummary}
@@ -382,9 +531,7 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
 
                   <article className="panel invoice-status-card modal-full-width">
                     <p className="panel-meta">
-                      {form.signatureMode === 'link'
-                        ? 'Un lien de signature sera genere apres creation.'
-                        : 'Le contrat sera exporte en PDF signe manuellement.'}
+              
                     </p>
                   </article>
                 </>
@@ -406,64 +553,8 @@ export function ContractsWorkspace({ initialContracts, clients }: ContractsWorks
                   </button>
                 </div>
               </div>
-            </form>
-          </div>
-
-          <aside className="doc-preview-column">
-            <div className="pdf-preview-sheet">
-              <p className="eyebrow">Apercu contrat</p>
-              <h3>{form.title || 'Contrat sans titre'}</h3>
-              <p className="panel-meta">Type: {form.contractType}</p>
-              <p className="panel-meta">Client: {clientById.get(form.clientId) ?? 'Aucun client'}</p>
-              <p className="panel-meta">Periode: {form.startDate || '-'} au {form.endDate || '-'}</p>
-              <p className="panel-meta">Montant: {formatCurrency(toEuros(form.amount))}</p>
-
-              <hr />
-
-              <h4>Clauses principales</h4>
-              <ul className="list">
-                {previewClauses.map((clause) => (
-                  <li key={clause}>{clause}</li>
-                ))}
-              </ul>
+              </form>
             </div>
-          </aside>
-        </section>
-
-        <section className="panel invoice-table-panel">
-          <div className="panel-head-inline">
-            <h2>Suivi contrats</h2>
-            <p className="panel-meta">{contracts.length} contrat(s)</p>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Contrat</th>
-                  <th>Client</th>
-                  <th>Periode</th>
-                  <th>Montant</th>
-                  <th>Statut</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contracts.map((contract) => (
-                  <tr key={contract.id}>
-                    <td>{contract.title}</td>
-                    <td>{clientById.get(contract.clientId) ?? 'Client inconnu'}</td>
-                    <td>{formatDate(contract.startDate)} - {formatDate(contract.endDate)}</td>
-                    <td>{formatCurrency(contract.amount)}</td>
-                    <td><StatusBadge label={getContractLabel(contract.status)} tone={getContractTone(contract.status)} /></td>
-                    <td>
-                      <Link className="header-cta" href={`/factures?clientId=${contract.clientId}`}>
-                        Creer facture liee
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </section>
       </div>

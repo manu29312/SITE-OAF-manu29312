@@ -28,14 +28,35 @@ const INITIAL_FORM: NewClientForm = {
   kbis: '',
 };
 
+type ClientsViewMode = 'all' | 'new-this-month';
+
+function isClientNewThisMonth(client: Client): boolean {
+  if (!client.createdAt) {
+    return false;
+  }
+
+  const createdAt = new Date(client.createdAt);
+  if (Number.isNaN(createdAt.getTime())) {
+    return false;
+  }
+
+  const now = new Date();
+  return createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear();
+}
+
 export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
   const [clientsRecap, setClientsRecap] = useState<Client[]>(clients);
+  const [viewMode, setViewMode] = useState<ClientsViewMode>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<NewClientForm>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const activeCount = clientsRecap.filter((client) => client.status === 'actif').length;
   const inactiveCount = clientsRecap.length - activeCount;
+  const newThisMonthCount = clientsRecap.filter(isClientNewThisMonth).length;
+  const visibleClients = viewMode === 'new-this-month'
+    ? clientsRecap.filter(isClientNewThisMonth)
+    : clientsRecap;
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -102,20 +123,33 @@ export function ClientsWorkspace({ clients }: ClientsWorkspaceProps) {
         <div className="content-column">
           <section className="panel page-context-panel">
             <div className="panel-head-inline">
-              <h2>Espace Clients</h2>
-              <span className="status-chip">CRM freelance</span>
-            </div>
+              <h2>Clients</h2>
+                      </div>
             <p className="panel-meta">
-              Gere tes clients, leurs coordonnees et leur statut pour alimenter automatiquement factures et contrats.
+              Gestion des clients factures et contrats.
+  
             </p>
             <div className="context-pills">
-              <span className="context-pill">Total: {clientsRecap.length}</span>
-              <span className="context-pill">Actifs: {activeCount}</span>
-              <span className="context-pill">Inactifs: {inactiveCount}</span>
+              <button
+                type="button"
+                className={viewMode === 'new-this-month' ? 'context-pill header-cta solid' : 'context-pill'}
+                onClick={() => setViewMode('new-this-month')}
+                aria-pressed={viewMode === 'new-this-month'}
+              >
+                Nouveaux clients du mois: {newThisMonthCount}
+              </button>
+              <button
+                type="button"
+                className={viewMode === 'all' ? 'context-pill header-cta solid' : 'context-pill'}
+                onClick={() => setViewMode('all')}
+                aria-pressed={viewMode === 'all'}
+              >
+                Total: {clientsRecap.length}
+              </button>
             </div>
           </section>
 
-          <ClientsPanel clients={clientsRecap} />
+          <ClientsPanel clients={visibleClients} />
         </div>
       </main>
 
