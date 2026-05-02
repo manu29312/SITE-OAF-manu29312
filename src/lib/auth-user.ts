@@ -1,7 +1,10 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 
-const LOCAL_CLERK_USER_ID = process.env.LOCAL_DEV_CLERK_ID ?? 'seed-user-clerk-id';
+const LOCAL_AUTH_USER_ID = process.env.LOCAL_DEV_AUTH_USER_ID ?? 'seed-user-auth-id';
+const LOCAL_AUTH_EMAIL = process.env.LOCAL_DEV_AUTH_EMAIL ?? 'local@site-oaf.app';
+const LOCAL_AUTH_NAME = process.env.LOCAL_DEV_AUTH_NAME ?? 'Local User';
 
 export function isLocalDevAuthEnabled(): boolean {
   return process.env.NODE_ENV !== 'production' && process.env.LOCAL_DEV_AUTH === 'true';
@@ -19,12 +22,74 @@ function isDatabaseUnavailable(error: unknown): boolean {
   );
 }
 
-export async function requireClerkUserId(): Promise<string> {
-  if (isLocalDevAuthEnabled()) {
-    return LOCAL_CLERK_USER_ID;
+type SupabaseSessionInfo = {
+  userId: string;
+  email: string | null;
+};
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const payload = Buffer.from(padded, 'base64').toString('utf-8');
+    return JSON.parse(payload) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function readSupabaseSessionFromCookies(): SupabaseSessionInfo | null {
+  const allCookies = cookies().getAll();
+  const authCookie = allCookies.find((cookie) => {
+    return cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token');
+  });
+
+  if (!authCookie?.value) {
+    return null;
   }
 
-  const { userId } = await auth();
+  let token: string | null = null;
+
+  try {
+    const parsed = JSON.parse(authCookie.value) as unknown;
+    if (parsed && typeof parsed === 'object' && 'access_token' in parsed) {
+      token = String((parsed as { access_token?: unknown }).access_token ?? '');
+    }
+  } catch {
+    token = authCookie.value;
+  }
+
+  if (!token) {
+    return null;
+  }
+
+  const payload = decodeJwtPayload(token);
+  if (!payload) {
+    return null;
+  }
+
+  const userId = typeof payload.sub === 'string' ? payload.sub : null;
+  const email = typeof payload.email === 'string' ? payload.email : null;
+
+  if (!userId) {
+    return null;
+  }
+
+  return { userId, email };
+}
+
+export async function requireAuthUserId(): Promise<string> {
+  if (isLocalDevAuthEnabled()) {
+    return LOCAL_AUTH_USER_ID;
+  }
+
+  const session = readSupabaseSessionFromCookies();
+  const userId = session?.userId ?? null;
   if (!userId) {
     throw new Error('UNAUTHORIZED');
   }
@@ -32,39 +97,38 @@ export async function requireClerkUserId(): Promise<string> {
   return userId;
 }
 
-export async function requireClerkUserIdOrRedirect(): Promise<string> {
+export async function requireAuthUserIdOrRedirect(): Promise<string> {
   if (isLocalDevAuthEnabled()) {
-    return LOCAL_CLERK_USER_ID;
+    return LOCAL_AUTH_USER_ID;
   }
 
-  const { userId, redirectToSignIn } = await auth();
+  const session = readSupabaseSessionFromCookies();
+  const userId = session?.userId ?? null;
   if (!userId) {
-    return redirectToSignIn({ returnBackUrl: '/dashboard' }) as never;
+    return redirect('/') as never;
   }
 
   return userId;
 }
 
-export async function ensureAppUser(clerkUserId: string): Promise<string> {
-  const clerkProfile = isLocalDevAuthEnabled() ? null : await currentUser();
+export async function ensureAppUser(authUserId: string): Promise<string> {
+  const session = isLocalDevAuthEnabled() ? null : readSupabaseSessionFromCookies();
   const email = isLocalDevAuthEnabled()
-    ? 'local@site-oaf.app'
-    : clerkProfile?.emailAddresses[0]?.emailAddress ?? null;
+    ? LOCAL_AUTH_EMAIL
+    : session?.email ?? null;
   const name = isLocalDevAuthEnabled()
-    ? 'Local User'
-    : [clerkProfile?.firstName, clerkProfile?.lastName].filter(Boolean).join(' ') ||
-      clerkProfile?.username ||
-      null;
+    ? LOCAL_AUTH_NAME
+    : null;
 
   try {
     const user = await prisma.user.upsert({
-      where: { clerkId: clerkUserId },
+      where: { authUserId: authUserId },
       update: {
         email,
         name,
       },
       create: {
-        clerkId: clerkUserId,
+        authUserId: authUserId,
         email,
         name,
       },
@@ -74,7 +138,7 @@ export async function ensureAppUser(clerkUserId: string): Promise<string> {
     return user.id;
   } catch (error) {
     if (isDatabaseUnavailable(error)) {
-      return clerkUserId;
+      return authUserId;
     }
 
     throw error;

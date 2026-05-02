@@ -1,12 +1,12 @@
-import { ensureAppUser, requireClerkUserId } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserId } from '@/lib/auth-user';
 import { createInvoice, getInvoices } from '@/lib/mock-db';
 import { apiData, apiError, fromCaughtError } from '@/lib/api-response';
 import { isInvoiceStatus, isIsoDate, isNonNegativeNumber, isPositiveAmount, requireText } from '@/lib/validators';
 
 export async function GET() {
   try {
-    const clerkUserId = await requireClerkUserId();
-    const appUserId = await ensureAppUser(clerkUserId);
+    const authUserId = await requireAuthUserId();
+    const appUserId = await ensureAppUser(authUserId);
     const invoices = await getInvoices(appUserId);
     return apiData(invoices);
   } catch (error) {
@@ -16,8 +16,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const clerkUserId = await requireClerkUserId();
-    const appUserId = await ensureAppUser(clerkUserId);
+    const authUserId = await requireAuthUserId();
+    const appUserId = await ensureAppUser(authUserId);
     const body = await request.json();
     const amountHt = Number(body?.amountHt ?? 0);
     const taxRate = Number(body?.taxRate ?? 20);

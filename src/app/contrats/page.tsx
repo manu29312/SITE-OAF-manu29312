@@ -1,10 +1,10 @@
 import { ContractsWorkspace } from '@/features/contracts/ContractsWorkspace';
-import { ensureAppUser, requireClerkUserIdOrRedirect } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserIdOrRedirect } from '@/lib/auth-user';
 import { getClients, getContracts } from '@/lib/mock-db';
 
 export default async function ContratsPage() {
-  const clerkUserId = await requireClerkUserIdOrRedirect();
-  const appUserId = await ensureAppUser(clerkUserId);
+  const authUserId = await requireAuthUserIdOrRedirect();
+  const appUserId = await ensureAppUser(authUserId);
   const [contracts, clients] = await Promise.all([
     getContracts(appUserId),
     getClients(appUserId),

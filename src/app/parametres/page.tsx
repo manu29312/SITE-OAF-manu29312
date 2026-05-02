@@ -1,11 +1,11 @@
 import Link from 'next/link';
 import { SettingsPanel } from '@/features/settings/SettingsPanel';
-import { ensureAppUser, requireClerkUserIdOrRedirect } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserIdOrRedirect } from '@/lib/auth-user';
 import { buildMainNavigation } from '@/lib/main-navigation';
 
 export default async function ParametresPage() {
-  const clerkUserId = await requireClerkUserIdOrRedirect();
-  await ensureAppUser(clerkUserId);
+  const authUserId = await requireAuthUserIdOrRedirect();
+  await ensureAppUser(authUserId);
 
   return (
     <main className="app-shell">

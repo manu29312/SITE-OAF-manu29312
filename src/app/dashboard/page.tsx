@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ensureAppUser, requireClerkUserIdOrRedirect } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserIdOrRedirect } from '@/lib/auth-user';
 import { formatCurrency } from '@/lib/formatters';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { getClients, getContracts, getInvoices } from '@/lib/mock-db';
@@ -51,8 +51,8 @@ function buildChartPath(values: number[], width: number, height: number): string
 }
 
 export default async function DashboardPage() {
-  const clerkUserId = await requireClerkUserIdOrRedirect();
-  const appUserId = await ensureAppUser(clerkUserId);
+  const authUserId = await requireAuthUserIdOrRedirect();
+  const appUserId = await ensureAppUser(authUserId);
 
   const [clientsResult, contractsResult, invoicesResult] = await Promise.allSettled([
     getClients(appUserId),

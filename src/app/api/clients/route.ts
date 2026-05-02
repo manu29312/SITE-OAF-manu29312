@@ -1,12 +1,12 @@
-import { ensureAppUser, requireClerkUserId } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserId } from '@/lib/auth-user';
 import { createClient, getClients } from '@/lib/mock-db';
 import { apiData, apiError, fromCaughtError } from '@/lib/api-response';
 import { isClientStatus, isEmail, requireText } from '@/lib/validators';
 
 export async function GET(request: Request) {
   try {
-    const clerkUserId = await requireClerkUserId();
-    const appUserId = await ensureAppUser(clerkUserId);
+    const authUserId = await requireAuthUserId();
+    const appUserId = await ensureAppUser(authUserId);
     const clients = await getClients(appUserId);
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get('query') ?? '').trim().toLowerCase();
@@ -31,8 +31,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const clerkUserId = await requireClerkUserId();
-    const appUserId = await ensureAppUser(clerkUserId);
+    const authUserId = await requireAuthUserId();
+    const appUserId = await ensureAppUser(authUserId);
     const body = await request.json();
 
     if (

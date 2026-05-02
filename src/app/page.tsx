@@ -34,7 +34,7 @@ export default function HomePage() {
             <p className="panel-meta">
               {localAuthEnabled
                 ? 'Mode local actif: authentification externe desactivee.'
-                : 'Authentification Clerk activee.'}
+                : 'Authentification Supabase activee.'}
             </p>
           </div>
         </section>

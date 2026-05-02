@@ -16,7 +16,7 @@ CREATE TYPE "ReminderChannel" AS ENUM ('EMAIL', 'SMS');
 -- CreateTable
 CREATE TABLE "User" (
   "id" TEXT NOT NULL,
-  "clerkId" TEXT NOT NULL,
+  "authUserId" TEXT NOT NULL,
   "email" TEXT,
   "name" TEXT,
   "company" TEXT,
@@ -114,7 +114,7 @@ CREATE TABLE "EventLog" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_clerkId_key" ON "User"("clerkId");
+CREATE UNIQUE INDEX "User_authUserId_key" ON "User"("authUserId");
 
 -- CreateIndex
 CREATE INDEX "Client_userId_idx" ON "Client"("userId");

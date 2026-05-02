@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum ClientStatus {
@@ -39,7 +40,7 @@ enum ReminderChannel {
 
 model User {
   id          String     @id @default(cuid())
-  clerkId     String     @unique
+  authUserId     String     @unique
   email       String?
   name        String?
   company     String?

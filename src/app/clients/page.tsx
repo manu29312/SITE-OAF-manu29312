@@ -1,10 +1,10 @@
 import { ClientsWorkspace } from '@/features/clients/ClientsWorkspace';
-import { ensureAppUser, requireClerkUserIdOrRedirect } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserIdOrRedirect } from '@/lib/auth-user';
 import { getClients } from '@/lib/mock-db';
 
 export default async function ClientsPage() {
-  const clerkUserId = await requireClerkUserIdOrRedirect();
-  const appUserId = await ensureAppUser(clerkUserId);
+  const authUserId = await requireAuthUserIdOrRedirect();
+  const appUserId = await ensureAppUser(authUserId);
   const clients = await getClients(appUserId);
 
   return (

@@ -1,12 +1,12 @@
-import { ensureAppUser, requireClerkUserId } from '@/lib/auth-user';
+import { ensureAppUser, requireAuthUserId } from '@/lib/auth-user';
 import { createContract, getContracts } from '@/lib/mock-db';
 import { apiData, apiError, fromCaughtError } from '@/lib/api-response';
 import { isContractStatus, isIsoDate, isPositiveAmount, requireText } from '@/lib/validators';
 
 export async function GET() {
   try {
-    const clerkUserId = await requireClerkUserId();
-    const appUserId = await ensureAppUser(clerkUserId);
+    const authUserId = await requireAuthUserId();
+    const appUserId = await ensureAppUser(authUserId);
     const contracts = await getContracts(appUserId);
     return apiData(contracts);
   } catch (error) {
@@ -16,8 +16,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const clerkUserId = await requireClerkUserId();
-    const appUserId = await ensureAppUser(clerkUserId);
+    const authUserId = await requireAuthUserId();
+    const appUserId = await ensureAppUser(authUserId);
     const body = await request.json();
     const amount = Number(body?.amount ?? 0);
     const status = isContractStatus(body?.status) ? body.status : 'actif';

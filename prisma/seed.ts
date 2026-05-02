@@ -4,10 +4,10 @@ const prisma = new PrismaClient();
 
 async function main() {
   const appUser = await prisma.user.upsert({
-    where: { clerkId: 'seed-user-clerk-id' },
+    where: { authUserId: 'seed-user-auth-id' },
     update: {},
     create: {
-      clerkId: 'seed-user-clerk-id',
+      authUserId: 'seed-user-auth-id',
       email: 'demo@site-oaf.local',
       name: 'Demo User',
       company: 'SITE OAF Demo',
