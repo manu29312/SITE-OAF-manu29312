@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import type { Client } from '@/types/client';
-import type { Invoice, InvoiceStatus } from '@/types/invoice';
+import type { Invoice } from '@/types/invoice';
 
 type InvoicesWorkspaceProps = {
   initialInvoices: Invoice[];
@@ -27,7 +27,6 @@ type NewInvoiceForm = {
   lineTitle: string;
   lineQuantity: string;
   lineUnitPrice: string;
-  status: InvoiceStatus;
 };
 
 const INITIAL_FORM: NewInvoiceForm = {
@@ -41,10 +40,10 @@ const INITIAL_FORM: NewInvoiceForm = {
   lineTitle: '',
   lineQuantity: '1',
   lineUnitPrice: '',
-  status: 'brouillon',
 };
 
 function getInvoiceTone(status: Invoice['status']): 'ok' | 'warn' | 'danger' | 'neutral' {
+  // Requested mapping: green paid, yellow pending, red overdue.
   if (status === 'payee') return 'ok';
   if (status === 'retard') return 'danger';
   if (status === 'envoyee') return 'warn';
@@ -75,7 +74,7 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
   const [successMessage, setSuccessMessage] = useState('');
   const [viewMode, setViewMode] = useState<InvoiceViewMode>('all');
   const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
-  const [submitMode, setSubmitMode] = useState<'create' | 'email'>('create');
+  const [submitMode, setSubmitMode] = useState<'payee' | 'envoyee' | 'brouillon'>('envoyee');
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client.company])), [clients]);
 
@@ -154,7 +153,7 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
           dueDate: form.dueDate,
           amountHt: totalHt,
           taxRate: Number(form.taxRate),
-          status: form.status,
+          status: submitMode,
         }),
       });
 
@@ -171,16 +170,19 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
         clientId: prev.clientId,
       }));
 
-      if (submitMode === 'email') {
+      if (submitMode === 'payee') {
         openInvoiceEmailDraft(createdInvoice);
+        setSuccessMessage(`Facture ${createdInvoice.number} creee comme payee et email du client ouvert.`);
+      } else if (submitMode === 'brouillon') {
+        setSuccessMessage('Facture enregistree en brouillon.');
       } else {
-        setSuccessMessage('Facture creee.');
+        setSuccessMessage('Facture creee avec delai de paiement.');
       }
     } catch {
       setErrorMessage('Erreur reseau lors de la creation de la facture.');
     } finally {
       setIsSubmitting(false);
-      setSubmitMode('create');
+      setSubmitMode('envoyee');
     }
   };
 
@@ -205,105 +207,161 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
     }
   };
 
+  const openCreateModal = () => {
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsCreatePanelOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsCreatePanelOpen(false);
+  };
+
   return (
-    <main className="app-shell">
-      <section className="dashboard-topbar panel">
-        <div className="dashboard-brand">
-          <span className="brand-dot" aria-hidden="true" />
-          <h1>OAF Admin</h1>
+    <>
+      <main className="app-shell">
+        <section className="dashboard-topbar panel">
+          <div className="dashboard-brand">
+            <span className="brand-dot" aria-hidden="true" />
+            <h1>OAF Admin</h1>
+          </div>
+          <Link className="header-cta" href="/contrats">Nouveau contrat</Link>
+        </section>
+
+        <nav className="dashboard-tabs panel" aria-label="Navigation principale">
+          {buildMainNavigation('factures').map((item) => (
+            <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="content-column">
+          <section className="panel page-context-panel">
+            <div className="context-toolbar">
+              <div className="context-pills">
+                <button
+                  type="button"
+                  className={viewMode === 'all' ? 'context-pill header-cta solid' : 'context-pill'}
+                  onClick={() => setViewMode('all')}
+                  aria-pressed={viewMode === 'all'}
+                >
+                  Total: {sortedInvoices.length}
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === 'attente' ? 'context-pill header-cta solid' : 'context-pill'}
+                  onClick={() => setViewMode('attente')}
+                  aria-pressed={viewMode === 'attente'}
+                >
+                  En attente: {grouped.attente.length}
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === 'retard' ? 'context-pill header-cta solid' : 'context-pill'}
+                  onClick={() => setViewMode('retard')}
+                  aria-pressed={viewMode === 'retard'}
+                >
+                  En retard: {grouped.retard.length}
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === 'payees' ? 'context-pill header-cta solid' : 'context-pill'}
+                  onClick={() => setViewMode('payees')}
+                  aria-pressed={viewMode === 'payees'}
+                >
+                  Payees: {grouped.payees.length}
+                </button>
+                <button
+                  type="button"
+                  className={viewMode === 'brouillons' ? 'context-pill header-cta solid' : 'context-pill'}
+                  onClick={() => setViewMode('brouillons')}
+                  aria-pressed={viewMode === 'brouillons'}
+                >
+                  Brouillons: {grouped.brouillons.length}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className="header-cta solid"
+                onClick={openCreateModal}
+                aria-expanded={isCreatePanelOpen}
+              >
+                Creer une facture
+              </button>
+            </div>
+          </section>
+
+          <section className="panel invoice-table-panel">
+            <div className="panel-head-inline">
+              <h2>Table factures</h2>
+              <p className="panel-meta">{visibleInvoices.length} facture(s)</p>
+            </div>
+
+            <div className="table-wrap">
+              <table className="data-table invoice-table">
+                <thead>
+                  <tr>
+                    <th>Numero</th>
+                    <th>Client</th>
+                    <th>Montant TTC</th>
+                    <th>Echeance</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleInvoices.length ? (
+                    visibleInvoices.map((invoice) => (
+                      <tr key={invoice.id}>
+                        <td>{invoice.number}</td>
+                        <td>{clientById.get(invoice.clientId) ?? 'Entreprise inconnue'}</td>
+                        <td>{formatAmountEur(invoice.amountTtc)}</td>
+                        <td>{formatDate(invoice.dueDate)}</td>
+                        <td>
+                          <StatusBadge label={getInvoiceLabel(invoice.status)} tone={getInvoiceTone(invoice.status)} />
+                        </td>
+                        <td>
+                          <div className="table-actions">
+                            {invoice.status !== 'payee' ? (
+                              <button type="button" className="invoice-ghost-btn" onClick={() => markPaid(invoice.id)}>
+                                Marquer payee
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="table-empty">Aucune facture pour le moment.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
-        <Link className="header-cta" href="/contrats">Nouveau contrat</Link>
-      </section>
+      </main>
 
-      <nav className="dashboard-tabs panel" aria-label="Navigation principale">
-        {buildMainNavigation('factures').map((item) => (
-          <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      {isCreatePanelOpen ? (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Nouvelle facture">
+          <section className="panel modal-card invoice-create-modal-card">
+            <div className="panel-head-inline">
+              <h2>Creer une facture</h2>
+              <button type="button" className="invoice-ghost-btn" onClick={closeCreateModal}>
+                Fermer
+              </button>
+            </div>
 
-      <div className="content-column">
-        <section className="panel page-context-panel">
-          <div className="context-pills">
-            <button
-              type="button"
-              className={viewMode === 'all' ? 'context-pill header-cta solid' : 'context-pill'}
-              onClick={() => setViewMode('all')}
-              aria-pressed={viewMode === 'all'}
-            >
-              Total: {sortedInvoices.length}
-            </button>
-            <button
-              type="button"
-              className={viewMode === 'attente' ? 'context-pill header-cta solid' : 'context-pill'}
-              onClick={() => setViewMode('attente')}
-              aria-pressed={viewMode === 'attente'}
-            >
-              En attente: {grouped.attente.length}
-            </button>
-            <button
-              type="button"
-              className={viewMode === 'retard' ? 'context-pill header-cta solid' : 'context-pill'}
-              onClick={() => setViewMode('retard')}
-              aria-pressed={viewMode === 'retard'}
-            >
-              En retard: {grouped.retard.length}
-            </button>
-            <button
-              type="button"
-              className={viewMode === 'payees' ? 'context-pill header-cta solid' : 'context-pill'}
-              onClick={() => setViewMode('payees')}
-              aria-pressed={viewMode === 'payees'}
-            >
-              Payees: {grouped.payees.length}
-            </button>
-            <button
-              type="button"
-              className={viewMode === 'brouillons' ? 'context-pill header-cta solid' : 'context-pill'}
-              onClick={() => setViewMode('brouillons')}
-              aria-pressed={viewMode === 'brouillons'}
-            >
-              Brouillons: {grouped.brouillons.length}
-            </button>
-          </div>
-
-          <div className="panel-actions split">
-            <button
-              type="button"
-              className="header-cta solid"
-              onClick={() => setIsCreatePanelOpen((prev) => !prev)}
-              aria-expanded={isCreatePanelOpen}
-            >
-              {isCreatePanelOpen ? 'Masquer creation facture' : 'Creer une facture'}
-            </button>
-          </div>
-        </section>
-
-        <section className="panel invoice-status-panel">
-          <h2>Suivi & rappels </h2>
-          <article className="invoice-status-card">
-            <p className="invoice-status-label ok">Factures Payées ({grouped.payees.length})</p>
-
-          </article>
-          <article className="invoice-status-card">
-            <p className="invoice-status-label warn">En attente ({grouped.attente.length})</p>
-            
-          </article>
-          <article className="invoice-status-card">
-            <p className="invoice-status-label danger">En retard ({grouped.retard.length})</p>
-            
-          </article>
-        </section>
-
-        {isCreatePanelOpen ? (
-          <section className="panel doc-workspace-grid">
-            <div className="doc-form-column">
-              <div className="panel-head-inline">
-                <h2>Creer une facture</h2>
-                  </div>
-
-              <form className="modal-form-grid" onSubmit={handleCreateInvoice}>
+            <div className="doc-workspace-grid">
+              <div className="doc-form-column">
+                <form className="modal-form-grid" onSubmit={handleCreateInvoice}>
               <label>
                 Client
                 <select
@@ -400,18 +458,6 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                 />
               </label>
 
-              <label>
-                Statut initial
-                <select
-                  value={form.status}
-                  onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as InvoiceStatus }))}
-                >
-                  <option value="brouillon">Brouillon</option>
-                  <option value="envoyee">Envoyee</option>
-                  <option value="retard">Retard</option>
-                </select>
-              </label>
-
               {errorMessage ? <p className="panel-meta modal-full-width">{errorMessage}</p> : null}
               {successMessage ? <p className="panel-meta modal-full-width">{successMessage}</p> : null}
 
@@ -426,111 +472,71 @@ export function InvoicesWorkspace({ initialInvoices, clients }: InvoicesWorkspac
                       type="submit"
                       className="invoice-ghost-btn"
                       disabled={isSubmitting}
-                      onClick={() => setSubmitMode('email')}
+                      onClick={() => setSubmitMode('payee')}
                     >
-                      Creer et envoyer par email
+                      {isSubmitting ? 'Creation...' : 'Creer payee et envoyer'}
                     </button>
                     <button
                       type="submit"
                       className="header-cta solid"
                       disabled={isSubmitting}
-                      onClick={() => setSubmitMode('create')}
+                      onClick={() => setSubmitMode('envoyee')}
                     >
-                      {isSubmitting ? 'Creation...' : 'Creer facture'}
+                      {isSubmitting ? 'Creation...' : 'Creer avec delai'}
+                    </button>
+                    <button
+                      type="submit"
+                      className="invoice-ghost-btn"
+                      disabled={isSubmitting}
+                      onClick={() => setSubmitMode('brouillon')}
+                    >
+                      {isSubmitting ? 'Creation...' : 'Creer brouillon'}
                     </button>
                   </div>
                 </div>
               </form>
-            </div>
-
-            <aside className="doc-preview-column">
-              <div className="pdf-preview-sheet">
-                <p className="eyebrow">Apercu facture A4</p>
-                <h3>Facture {form.reference || 'nouvelle'}</h3>
-                <p className="panel-meta">Client: {clientById.get(form.clientId) ?? 'Aucun client'}</p>
-                <p className="panel-meta">Date: {form.issueDate || '-'}</p>
-                <p className="panel-meta">Echeance: {form.dueDate || '-'}</p>
-
-                <hr />
-
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Designation</th>
-                      <th>Qt</th>
-                      <th>PU</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>{form.lineTitle || 'Prestation freelance'}</td>
-                      <td>{form.lineQuantity || '1'}</td>
-                      <td>{formatCurrency(Number(form.lineUnitPrice || 0))}</td>
-                      <td>{formatCurrency(lineTotal)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div className="invoice-preview-totals">
-                  <p>HT: {formatCurrency(totalHt)}</p>
-                  <p>TVA ({taxRate}%): {formatCurrency(totalTax)}</p>
-                  <p><strong>TTC: {formatCurrency(totalTtc)}</strong></p>
-                </div>
               </div>
-            </aside>
+
+              <aside className="doc-preview-column">
+                <div className="pdf-preview-sheet">
+                  <p className="eyebrow">Apercu facture A4</p>
+                  <h3>Facture {form.reference || 'nouvelle'}</h3>
+                  <p className="panel-meta">Client: {clientById.get(form.clientId) ?? 'Aucun client'}</p>
+                  <p className="panel-meta">Date: {form.issueDate || '-'}</p>
+                  <p className="panel-meta">Echeance: {form.dueDate || '-'}</p>
+
+                  <hr />
+
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Designation</th>
+                        <th>Qt</th>
+                        <th>PU</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>{form.lineTitle || 'Prestation freelance'}</td>
+                        <td>{form.lineQuantity || '1'}</td>
+                        <td>{formatCurrency(Number(form.lineUnitPrice || 0))}</td>
+                        <td>{formatCurrency(lineTotal)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="invoice-preview-totals">
+                    <p>HT: {formatCurrency(totalHt)}</p>
+                    <p>TVA ({taxRate}%): {formatCurrency(totalTax)}</p>
+                    <p><strong>TTC: {formatCurrency(totalTtc)}</strong></p>
+                  </div>
+                </div>
+              </aside>
+            </div>
           </section>
-        ) : null}
-
-        <section className="panel invoice-table-panel">
-          <div className="panel-head-inline">
-            <h2>Table factures</h2>
-            <p className="panel-meta">{visibleInvoices.length} facture(s)</p>
-          </div>
-
-          <div className="table-wrap">
-            <table className="data-table invoice-table">
-              <thead>
-                <tr>
-                  <th>Numero</th>
-                  <th>Client</th>
-                  <th>Montant TTC</th>
-                  <th>Echeance</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleInvoices.length ? (
-                  visibleInvoices.map((invoice) => (
-                    <tr key={invoice.id}>
-                      <td>{invoice.number}</td>
-                      <td>{clientById.get(invoice.clientId) ?? 'Entreprise inconnue'}</td>
-                      <td>{formatAmountEur(invoice.amountTtc)}</td>
-                      <td>{formatDate(invoice.dueDate)}</td>
-                      <td>
-                        <StatusBadge label={getInvoiceLabel(invoice.status)} tone={getInvoiceTone(invoice.status)} />
-                      </td>
-                      <td>
-                        <div className="table-actions">
-                          <button type="button" className="invoice-ghost-btn">Relancer</button>
-                          <button type="button" className="invoice-ghost-btn" onClick={() => markPaid(invoice.id)}>
-                            Marquer payee
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="table-empty">Aucune facture pour le moment.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </main>
+        </div>
+      ) : null}
+    </>
   );
 }

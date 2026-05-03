@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 type SettingsState = {
   companyName: string;
-  legalStatus: 'auto-entrepreneur' | 'sasu' | 'pme' | 'intl';
+  legalStatus: '' | 'auto-entrepreneur' | 'sasu' | 'pme' | 'intl';
   siren: string;
   vatNumber: string;
   address: string;
@@ -26,15 +26,15 @@ type SettingsState = {
 };
 
 const INITIAL_STATE: SettingsState = {
-  companyName: 'OAF Studio',
-  legalStatus: 'auto-entrepreneur',
-  siren: '123 456 789',
-  vatNumber: 'FR12 123456789',
-  address: '12 rue des Freelances, 69000 Lyon',
-  iban: 'FR76 3000 4000 5000 6000 7000 890',
+  companyName: '',
+  legalStatus: '',
+  siren: '',
+  vatNumber: '',
+  address: '',
+  iban: '',
   logoUrl: '',
-  city: 'Lyon',
-  supportEmail: 'contact@oaf-studio.fr',
+  city: '',
+  supportEmail: '',
   vatRate: '20',
   invoicePrefix: 'FAC',
   paymentDelayDays: '30',
@@ -49,6 +49,7 @@ const INITIAL_STATE: SettingsState = {
 };
 
 const SETTINGS_STORAGE_KEY = 'site-oaf.settings';
+const COMPANY_NAME_COOKIE = 'site-oaf.company-name';
 
 type FeedbackState = {
   tone: 'info' | 'success' | 'error';
@@ -73,6 +74,14 @@ function readStoredSettings(): Partial<SettingsState> | null {
   }
 }
 
+function syncCompanyNameCookie(companyName: string) {
+  document.cookie = `${COMPANY_NAME_COOKIE}=${encodeURIComponent(companyName)}; path=/; max-age=31536000; samesite=lax`;
+}
+
+function clearCompanyNameCookie() {
+  document.cookie = `${COMPANY_NAME_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
 export function SettingsPanel() {
   const [settings, setSettings] = useState<SettingsState>(INITIAL_STATE);
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
@@ -83,6 +92,9 @@ export function SettingsPanel() {
     const stored = readStoredSettings();
     if (stored) {
       setSettings((prev) => ({ ...prev, ...stored }));
+      if (stored.companyName) {
+        syncCompanyNameCookie(stored.companyName);
+      }
       setFeedback({ tone: 'info', message: 'Parametres charges depuis ce navigateur.' });
     }
 
@@ -106,6 +118,7 @@ export function SettingsPanel() {
 
     try {
       window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+      syncCompanyNameCookie(settings.companyName);
       setFeedback({ tone: 'success', message: 'Parametres enregistres localement.' });
     } catch {
       setFeedback({ tone: 'error', message: 'Impossible de sauvegarder les parametres dans ce navigateur.' });
@@ -118,6 +131,7 @@ export function SettingsPanel() {
     setSettings(INITIAL_STATE);
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
+      clearCompanyNameCookie();
     }
 
     setFeedback({ tone: 'info', message: 'Parametres reinitialises.' });
@@ -151,19 +165,21 @@ export function SettingsPanel() {
                   legalStatus: event.target.value as SettingsState['legalStatus'],
                 }))
               }
+              required
             >
+              <option value="">Selectionner un statut</option>
               <option value="auto-entrepreneur">Auto-entrepreneur</option>
               <option value="sasu">SASU</option>
               <option value="pme">PME</option>
-              <option value="intl">International</option>
+             
             </select>
           </label>
 
           <label>
-            SIREN
+            SIRET
             <input
               value={settings.siren}
-              onChange={(event) => setSettings((prev) => ({ ...prev, siren: event.target.value }))}
+              onChange={(event) => setSettings((prev) => ({ ...prev, siret: event.target.value }))}
               required
             />
           </label>

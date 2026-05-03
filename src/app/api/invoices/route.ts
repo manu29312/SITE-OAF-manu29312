@@ -22,7 +22,6 @@ export async function POST(request: Request) {
     const amountHt = Number(body?.amountHt ?? 0);
     const taxRate = Number(body?.taxRate ?? 20);
     const rawStatus = isInvoiceStatus(body?.status) ? body.status : 'brouillon';
-    const requestedStatus = rawStatus === 'payee' ? 'brouillon' : rawStatus;
 
     if (
       !requireText(body?.clientId ?? '') ||
@@ -38,7 +37,7 @@ export async function POST(request: Request) {
       amountHt,
       taxRate,
       dueDate: body.dueDate,
-      status: requestedStatus ?? 'brouillon',
+      status: rawStatus,
     });
 
     return apiData(created, 201);

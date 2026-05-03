@@ -1,9 +1,22 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { homePageContent } from '@/lib/homepage-content';
-import { isLocalDevAuthEnabled } from '@/lib/auth-user';
+import { isLocalDevAuthEnabled, requireAuthUserId } from '@/lib/auth-user';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const authUserId = await requireAuthUserId().catch((error: unknown) => {
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return null;
+    }
+
+    throw error;
+  });
+
+  if (authUserId) {
+    redirect('/dashboard');
+  }
+
   const localAuthEnabled = isLocalDevAuthEnabled();
 
   return (

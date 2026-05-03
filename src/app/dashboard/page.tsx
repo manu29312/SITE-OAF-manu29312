@@ -1,8 +1,12 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { ensureAppUser, requireAuthUserIdOrRedirect } from '@/lib/auth-user';
 import { formatCurrency } from '@/lib/formatters';
 import { buildMainNavigation } from '@/lib/main-navigation';
 import { getClients, getContracts, getInvoices } from '@/lib/mock-db';
+import { RevenueChart } from '@/features/dashboard/RevenueChart';
+
+const COMPANY_NAME_COOKIE = 'site-oaf.company-name';
 
 type RevenuePoint = {
   label: string;
@@ -53,6 +57,7 @@ function buildChartPath(values: number[], width: number, height: number): string
 export default async function DashboardPage() {
   const authUserId = await requireAuthUserIdOrRedirect();
   const appUserId = await ensureAppUser(authUserId);
+  const companyName = decodeURIComponent(cookies().get(COMPANY_NAME_COOKIE)?.value ?? '').trim() || 'OAF Admin';
 
   const [clientsResult, contractsResult, invoicesResult] = await Promise.allSettled([
     getClients(appUserId),
@@ -85,21 +90,19 @@ export default async function DashboardPage() {
   const profileCompletion = Math.min(100, 25 + (clients.length > 0 ? 25 : 0) + (invoices.length > 0 ? 25 : 0) + (contracts.length > 0 ? 25 : 0));
 
   const revenueSeries = buildRevenueSeries(invoices);
-  const chartValues = revenueSeries.map((item) => item.value);
-  const chartPath = buildChartPath(chartValues, 690, 180);
-  const maxChartValue = Math.max(...chartValues, 1);
-  const chartArea = chartPath ? `${chartPath} L 690 180 L 0 180 Z` : '';
+  const showOnboarding = profileCompletion < 100;
 
   return (
     <main className="app-shell">
       <section className="dashboard-topbar panel">
         <div className="dashboard-brand">
           <span className="brand-dot" aria-hidden="true" />
-          <h1>OAF Admin</h1>
+          <h1>{companyName}</h1>
         </div>
         <div className="panel-actions split">
-          <Link className="header-cta" href="/factures">Nouvelle facture</Link>
-          <Link className="header-cta solid" href="/contrats">Nouveau contrat</Link>
+          <span className="dashboard-revenue-pill">
+            CA du mois <strong>{formatCurrency(monthlyRevenue)}</strong>
+          </span>
         </div>
       </section>
 
@@ -116,26 +119,28 @@ export default async function DashboardPage() {
           </section>
         ) : null}
 
-        <section className="panel profile-panel">
-          <div>
-            <p className="eyebrow">Onboarding profil</p>
-            <h2>Profil entreprise</h2>
-            <p className="panel-meta">Completer les infos legales pour produire des documents valides FR/EU.</p>
-            <div className="profile-progress-row" aria-label="Progression profil">
-              <div className="profile-progress-track" aria-hidden="true">
-                <span style={{ width: `${profileCompletion}%` }} />
+        {showOnboarding ? (
+          <section className="panel profile-panel">
+            <div>
+              <p className="eyebrow">Onboarding profil</p>
+              <h2>Profil entreprise</h2>
+              <p className="panel-meta">Completer les infos legales pour produire des documents valides FR/EU.</p>
+              <div className="profile-progress-row" aria-label="Progression profil">
+                <div className="profile-progress-track" aria-hidden="true">
+                  <span style={{ width: `${profileCompletion}%` }} />
+                </div>
+                <strong>{profileCompletion}%</strong>
               </div>
-              <strong>{profileCompletion}%</strong>
+              <p className="panel-meta">
+                {clients.length} client(s), {contracts.length} contrat(s), {invoices.length} facture(s) dans ton espace.
+              </p>
+              <p className="panel-meta">
+                Les rappels sont geres dans les parametres de l entreprise.
+              </p>
             </div>
-            <p className="panel-meta">
-              {clients.length} client(s), {contracts.length} contrat(s), {invoices.length} facture(s) dans ton espace.
-            </p>
-            <p className="panel-meta">
-              Les rappels sont geres dans les parametres de l entreprise.
-            </p>
-          </div>
-          <Link href="/parametres" className="header-cta settings-pill">Completer profil</Link>
-        </section>
+            <Link href="/parametres" className="header-cta settings-pill">Completer profil</Link>
+          </section>
+        ) : null}
 
         <nav className="dashboard-tabs panel" aria-label="Navigation dashboard">
           {buildMainNavigation('dashboard').map((item) => (
@@ -146,12 +151,6 @@ export default async function DashboardPage() {
         </nav>
 
         <section className="dashboard-metrics">
-          <article className="panel metric-card">
-            <p className="metric-label">CA du mois</p>
-            <p className="metric-value">{formatCurrency(monthlyRevenue)}</p>
-            <p className="panel-meta">Cumule des factures dues ce mois-ci.</p>
-          </article>
-
           <section className="panel chart-panel metric-chart-panel">
             <div className="chart-head">
               <div>
@@ -169,30 +168,7 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="chart-surface" role="img" aria-label="Evolution du chiffre d affaires de 2023 a 2026">
-              <svg viewBox="0 0 740 260" preserveAspectRatio="none">
-                <line x1="25" y1="35" x2="715" y2="35" className="grid-line" />
-                <line x1="25" y1="95" x2="715" y2="95" className="grid-line" />
-                <line x1="25" y1="155" x2="715" y2="155" className="grid-line" />
-                <line x1="25" y1="215" x2="715" y2="215" className="grid-line" />
-
-                {chartPath ? <path d={chartPath} className="chart-line" transform="translate(25, 35)" /> : null}
-                {chartArea ? <path d={chartArea} className="chart-fill" transform="translate(25, 35)" /> : null}
-
-                {chartValues.map((value, index) => {
-                  const step = chartValues.length > 1 ? 690 / (chartValues.length - 1) : 0;
-                  const x = 25 + index * step;
-                  const y = 35 + (180 - (value / maxChartValue) * 180);
-                  return <circle key={`${value}-${index}`} cx={x} cy={y} r="5" className="chart-dot" />;
-                })}
-              </svg>
-            </div>
-
-            <div className="chart-years" aria-hidden="true">
-              {revenueSeries.map((point) => (
-                <span key={point.label}>{point.label}</span>
-              ))}
-            </div>
+            <RevenueChart points={revenueSeries} />
           </section>
 
           <article className="panel metric-card">

@@ -299,7 +299,7 @@ export async function getInvoiceById(userId: string, id: string): Promise<Invoic
 }
 
 export async function createInvoice(userId: string, input: CreateInvoiceInput): Promise<Invoice> {
-  const initialStatus = input.status === 'payee' ? 'brouillon' : input.status;
+  const initialStatus = input.status ?? 'brouillon';
 
   try {
     const number = await generateNextInvoiceNumber(userId);
