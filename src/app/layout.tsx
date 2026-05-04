@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { IBM_Plex_Sans, Space_Grotesk } from 'next/font/google';
+import { IBM_Plex_Sans, Inter } from 'next/font/google';
 import './globals.css';
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   subsets: ['latin'],
   variable: '--font-display',
 });
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${spaceGrotesk.variable} ${ibmPlexSans.variable}`}>
+    <html lang="fr" className={`${inter.variable} ${ibmPlexSans.variable}`}>
       <body className="app-body">
         {children}
       </body>

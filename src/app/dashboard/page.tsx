@@ -37,27 +37,11 @@ function buildRevenueSeries(invoices: Array<{ dueDate: string; amountTtc: number
   return points;
 }
 
-function buildChartPath(values: number[], width: number, height: number): string {
-  if (!values.length) {
-    return '';
-  }
-
-  const maxValue = Math.max(...values, 1);
-  const step = values.length > 1 ? width / (values.length - 1) : 0;
-
-  return values
-    .map((value, index) => {
-      const x = index * step;
-      const y = height - (value / maxValue) * height;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(' ');
-}
-
 export default async function DashboardPage() {
   const authUserId = await requireAuthUserIdOrRedirect();
   const appUserId = await ensureAppUser(authUserId);
-  const companyName = decodeURIComponent(cookies().get(COMPANY_NAME_COOKIE)?.value ?? '').trim() || 'OAF Admin';
+  const cookieStore = await cookies();
+  const companyName = decodeURIComponent(cookieStore.get(COMPANY_NAME_COOKIE)?.value ?? '').trim() || 'OAF Admin';
 
   const [clientsResult, contractsResult, invoicesResult] = await Promise.allSettled([
     getClients(appUserId),
@@ -93,11 +77,13 @@ export default async function DashboardPage() {
   const showOnboarding = profileCompletion < 100;
 
   return (
-    <main className="app-shell">
-      <section className="dashboard-topbar panel">
+    <main className="app-shell dashboard-admin">
+      <section className="dashboard-topbar">
         <div className="dashboard-brand">
-          <span className="brand-dot" aria-hidden="true" />
-          <h1>{companyName}</h1>
+          <div>
+            <h1>{companyName}</h1>
+            <p className="dashboard-note">Vue operationnelle</p>
+          </div>
         </div>
         <div className="panel-actions split">
           <span className="dashboard-revenue-pill">
@@ -108,7 +94,7 @@ export default async function DashboardPage() {
 
       <div className="content-column">
         {dataErrors.length ? (
-          <section className="panel dashboard-alert">
+          <section className="dashboard-alert">
             <div className="panel-head-inline">
               <h2>Sources de donnees partiellement indisponibles</h2>
               <span className="status-chip warn">Mode degrade</span>
@@ -120,7 +106,7 @@ export default async function DashboardPage() {
         ) : null}
 
         {showOnboarding ? (
-          <section className="panel profile-panel">
+          <section className="profile-panel">
             <div>
               <p className="eyebrow">Onboarding profil</p>
               <h2>Profil entreprise</h2>
@@ -138,20 +124,53 @@ export default async function DashboardPage() {
                 Les rappels sont geres dans les parametres de l entreprise.
               </p>
             </div>
-            <Link href="/parametres" className="header-cta settings-pill">Completer profil</Link>
+            <div className="profile-side-note">
+              <Link href="/parametres" className="header-cta settings-pill">Completer profil</Link>
+            </div>
           </section>
         ) : null}
 
-        <nav className="dashboard-tabs panel" aria-label="Navigation dashboard">
-          {buildMainNavigation('dashboard').map((item) => (
-            <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
-              {item.label}
-            </Link>
-          ))}
+        <nav className="dashboard-tabs" aria-label="Navigation dashboard">
+          {buildMainNavigation('dashboard')
+            .filter((item) => item.href !== '/parametres')
+            .map((item) => (
+              <Link key={item.href} href={item.href} className={`dashboard-tab ${item.active ? 'active' : ''}`}>
+                {item.label}
+              </Link>
+            ))}
+          <Link
+            href="/parametres"
+            className={`dashboard-tab dashboard-tab-settings${buildMainNavigation('dashboard').find((i) => i.href === '/parametres')?.active ? ' active' : ''}`}
+          >
+            Parametres
+          </Link>
         </nav>
 
-        <section className="dashboard-metrics">
-          <section className="panel chart-panel metric-chart-panel">
+        <section className="dashboard-split">
+          <section className="dashboard-story-panel">
+            <p className="eyebrow">Vision de la semaine</p>
+            <h2>Piloter les flux sans perdre le fil</h2>
+            <p className="panel-meta">
+              Un bloc unique pour suivre tresorerie, conversion et retards en un coup d oeil.
+            </p>
+
+            <div className="story-kpi-list">
+              <article>
+                <span>Encours</span>
+                <strong>{formatCurrency(pendingAmount)}</strong>
+              </article>
+              <article>
+                <span>Retards</span>
+                <strong>{overdueCount}</strong>
+              </article>
+              <article>
+                <span>Signatures</span>
+                <strong>{signedRate}%</strong>
+              </article>
+            </div>
+          </section>
+
+          <section className="dashboard-chart-panel">
             <div className="chart-head">
               <div>
                 <h2>Evolution du chiffre d affaires</h2>
@@ -170,19 +189,21 @@ export default async function DashboardPage() {
 
             <RevenueChart points={revenueSeries} />
           </section>
+        </section>
 
-          <article className="panel metric-card">
+        <section className="dashboard-kpi-row">
+          <article className="metric-card">
             <p className="metric-label">Encours a collecter</p>
             <p className="metric-value">{formatCurrency(pendingAmount)}</p>
             <p className="panel-meta">Factures envoyees + retard.</p>
           </article>
 
-          <article className="panel metric-card">
+          <article className="metric-card">
             <p className="metric-label">Factures en retard</p>
             <p className="metric-value">{overdueCount}</p>
           </article>
 
-          <article className="panel metric-card metric-card-accent">
+          <article className="metric-card metric-card-accent">
             <p className="metric-label">Taux de signature</p>
             <p className="metric-value">{signedRate}%</p>
           </article>

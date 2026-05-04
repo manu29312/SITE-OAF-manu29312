@@ -45,6 +45,7 @@ export function RevenueChart({ points }: RevenueChartProps) {
   const chartArea = chartPath ? `${chartPath} L ${CHART_WIDTH} ${CHART_HEIGHT} L 0 ${CHART_HEIGHT} Z` : '';
   const hoveredPoint = hoveredIndex === null ? null : points[hoveredIndex];
   const hoveredValue = hoveredIndex === null ? null : values[hoveredIndex];
+  const tooltipIndex = hoveredIndex ?? 0;
 
   return (
     <>
@@ -53,7 +54,7 @@ export function RevenueChart({ points }: RevenueChartProps) {
           <div
             className="chart-tooltip"
             style={{
-              left: `${Math.min(hoveredIndex * (points.length > 1 ? CHART_WIDTH / (points.length - 1) : 0) + X_OFFSET + 18, 560)}px`,
+              left: `${Math.min(tooltipIndex * (points.length > 1 ? CHART_WIDTH / (points.length - 1) : 0) + X_OFFSET + 18, 560)}px`,
               top: `${Math.max(Y_OFFSET + (CHART_HEIGHT - (hoveredValue / maxValue) * CHART_HEIGHT) - 54, 16)}px`,
             }}
           >
@@ -63,6 +64,12 @@ export function RevenueChart({ points }: RevenueChartProps) {
         ) : null}
 
         <svg viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`} preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3d6aff" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#3d6aff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
           <line x1="25" y1="35" x2="715" y2="35" className="grid-line" />
           <line x1="25" y1="95" x2="715" y2="95" className="grid-line" />
           <line x1="25" y1="155" x2="715" y2="155" className="grid-line" />

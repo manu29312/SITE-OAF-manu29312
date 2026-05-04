@@ -43,8 +43,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-function readSupabaseSessionFromCookies(): SupabaseSessionInfo | null {
-  const allCookies = cookies().getAll();
+async function readSupabaseSessionFromCookies(): Promise<SupabaseSessionInfo | null> {
+  const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
   const authCookie = allCookies.find((cookie) => {
     return cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token');
   });
@@ -88,7 +89,7 @@ export async function requireAuthUserId(): Promise<string> {
     return LOCAL_AUTH_USER_ID;
   }
 
-  const session = readSupabaseSessionFromCookies();
+  const session = await readSupabaseSessionFromCookies();
   const userId = session?.userId ?? null;
   if (!userId) {
     throw new Error('UNAUTHORIZED');
@@ -102,7 +103,7 @@ export async function requireAuthUserIdOrRedirect(): Promise<string> {
     return LOCAL_AUTH_USER_ID;
   }
 
-  const session = readSupabaseSessionFromCookies();
+  const session = await readSupabaseSessionFromCookies();
   const userId = session?.userId ?? null;
   if (!userId) {
     return redirect('/') as never;
@@ -112,7 +113,7 @@ export async function requireAuthUserIdOrRedirect(): Promise<string> {
 }
 
 export async function ensureAppUser(authUserId: string): Promise<string> {
-  const session = isLocalDevAuthEnabled() ? null : readSupabaseSessionFromCookies();
+  const session = isLocalDevAuthEnabled() ? null : await readSupabaseSessionFromCookies();
   const email = isLocalDevAuthEnabled()
     ? LOCAL_AUTH_EMAIL
     : session?.email ?? null;
